@@ -77,25 +77,46 @@ end
 local MY_HWID = getClientHWID()
 
 -- ════════════════════════════════════════════════════════
--- CROSS-EXECUTOR HTTP REQUEST
+-- ANTI-HTTPSPY & SECURE HTTP REQUEST
 -- ════════════════════════════════════════════════════════
+local raw_http_get = (clonefunction and clonefunction(game.HttpGet)) or game.HttpGet
+local raw_request  = (clonefunction and (request and clonefunction(request) or (syn and syn.request and clonefunction(syn.request)) or (http and http.request and clonefunction(http.request)) or (http_request and clonefunction(http_request)))) or (request or (syn and syn.request) or (http and http.request) or http_request)
+
+local function detectHttpSpy()
+    local suspiciousNames = {"HttpSpy", "SimpleSpy", "TurtleSpy", "RemoteSpy", "SpyGui", "Hydroxide", "HttpDebugger"}
+    for _, name in ipairs(suspiciousNames) do
+        if CoreGui:FindFirstChild(name) or (getgenv and getgenv()[name]) then
+            return true
+        end
+    end
+    return false
+end
+
 local function performHttpRequest(url, headers)
     headers = headers or {}
     headers["X-HWID"] = MY_HWID
+    headers["X-Timestamp"] = tostring(os.time())
+    headers["X-Client-Ver"] = "1.1"
 
-    if syn and syn.request then
-        local res = syn.request({Url = url, Method = "GET", Headers = headers})
-        return res.Body, res.StatusCode
-    elseif http and http.request then
-        local res = http.request({Url = url, Method = "GET", Headers = headers})
-        return res.Body, res.StatusCode
-    elseif request then
-        local res = request({Url = url, Method = "GET", Headers = headers})
-        return res.Body, res.StatusCode
-    else
-        local success, body = pcall(function() return game:HttpGet(url) end)
+    if detectHttpSpy() then
+        task.wait(1.5)
+    end
+
+    if raw_request then
+        local ok, res = pcall(function()
+            return raw_request({Url = url, Method = "GET", Headers = headers})
+        end)
+        if ok and res then
+            return res.Body or res.body, res.StatusCode or res.status_code or 200
+        end
+    end
+
+    if raw_http_get then
+        local success, body = pcall(function() return raw_http_get(game, url) end)
         return body, success and 200 or 400
     end
+
+    return nil, 500
 end
 
 -- ════════════════════════════════════════════════════════
