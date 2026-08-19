@@ -10,7 +10,7 @@
   <style>
     :root {
       --bg-dark: #0a0b10;
-      --bg-card: rgba(18, 20, 29, 0.75);
+      --bg-card: rgba(18, 20, 29, 0.85);
       --bg-card-border: rgba(255, 255, 255, 0.08);
       --accent-primary: #6366f1;
       --accent-glow: rgba(99, 102, 241, 0.35);
@@ -41,7 +41,6 @@
       position: relative;
     }
 
-    /* Ambient Glowing Background Orbs */
     .glow-orb {
       position: absolute;
       border-radius: 50%;
@@ -78,7 +77,6 @@
       text-align: center;
       background: var(--bg-card);
       backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
       border: 1px solid var(--bg-card-border);
       border-radius: 20px;
       padding: 32px 24px;
@@ -106,6 +104,16 @@
       box-shadow: 0 0 8px #818cf8;
     }
 
+    .badge-unlocked {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #34d399;
+    }
+    .badge-unlocked .badge-dot {
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+
     h1 {
       font-size: 28px;
       font-weight: 800;
@@ -124,7 +132,6 @@
     .card {
       background: var(--bg-card);
       backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
       border: 1px solid var(--bg-card-border);
       border-radius: 20px;
       padding: 24px;
@@ -148,10 +155,10 @@
 
     .btn {
       width: 100%;
-      padding: 14px 20px;
+      padding: 15px 20px;
       border-radius: 12px;
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       border: none;
       transition: all 0.2s ease;
@@ -171,8 +178,15 @@
       transform: translateY(-2px);
       box-shadow: 0 6px 25px rgba(99, 102, 241, 0.5);
     }
-    .btn-primary:active {
-      transform: translateY(0);
+
+    .btn-lootlabs {
+      background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(236, 72, 153, 0.35);
+    }
+    .btn-lootlabs:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(236, 72, 153, 0.5);
     }
 
     .btn-secondary {
@@ -182,7 +196,6 @@
     }
     .btn-secondary:hover {
       background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(255, 255, 255, 0.2);
     }
 
     .btn-discord {
@@ -193,12 +206,12 @@
       background: #4752C4;
     }
 
-    /* Key Box & Expiration Timer */
+    /* Key Box & Countdown Timer */
     .key-display {
       background: rgba(0, 0, 0, 0.4);
-      border: 1px solid var(--bg-card-border);
+      border: 1px solid rgba(99, 102, 241, 0.3);
       border-radius: 14px;
-      padding: 16px;
+      padding: 18px;
       margin-top: 16px;
       display: none;
       animation: fadeIn 0.3s ease;
@@ -248,7 +261,6 @@
       margin-top: 2px;
     }
 
-    /* Input & Checker */
     .input-field {
       width: 100%;
       background: rgba(0, 0, 0, 0.3);
@@ -259,7 +271,6 @@
       font-family: 'JetBrains Mono', monospace;
       font-size: 13px;
       outline: none;
-      transition: border-color 0.2s;
       margin-bottom: 12px;
     }
     .input-field:focus {
@@ -299,27 +310,30 @@
   <div class="container">
     <!-- Header -->
     <div class="header-card">
-      <div class="badge">
+      <div id="mainBadge" class="badge">
         <div class="badge-dot"></div>
-        <span>8-HOUR DYNAMIC KEY SYSTEM</span>
+        <span id="badgeText">8-HOUR LOOTLABS KEY GATEWAY</span>
       </div>
       <h1>CiganyHUB Access</h1>
-      <p class="subtitle">Generate a temporary session key to execute scripts in-game. Each key remains active for exactly 8 hours.</p>
+      <p class="subtitle">Complete the short LootLabs link to receive an 8-hour access key to run CiganyHUB scripts.</p>
     </div>
 
-    <!-- Key Generator Card -->
+    <!-- Get Key Card -->
     <div class="card">
       <div class="card-title">
-        <span>⚡</span> Generate New Key
+        <span>💎</span> Step 1: Get Key via LootLabs
       </div>
       <div class="btn-group">
-        <button id="genBtn" class="btn btn-primary" onclick="generateKey()">
-          Generate 8-Hour Key
+        <button id="lootBtn" class="btn btn-lootlabs" onclick="goToLootLabs()">
+          ⚡ Complete LootLabs Ad (Get 8-Hour Key)
         </button>
       </div>
 
-      <!-- Active Key Box -->
+      <!-- Key Display when claimed -->
       <div id="keyBox" class="key-display">
+        <div style="font-weight: 700; font-size: 14px; color: #34d399; margin-bottom: 12px; text-align: center;">
+          🎉 Key Unlocked! (Valid for 8 Hours)
+        </div>
         <div class="timer-container">
           <div class="timer-unit">
             <div id="hours" class="timer-number">08</div>
@@ -337,13 +351,13 @@
 
         <div id="keyText" class="key-text-box">...</div>
 
-        <button id="copyBtn" class="btn btn-secondary" onclick="copyKey()">
+        <button id="copyBtn" class="btn btn-primary" onclick="copyKey()">
           📋 Copy Key to Clipboard
         </button>
       </div>
     </div>
 
-    <!-- Verify / Check Card -->
+    <!-- Check Expiration Card -->
     <div class="card">
       <div class="card-title">
         <span>🔍</span> Check Key Expiration
@@ -366,7 +380,7 @@
     </div>
 
     <div class="footer">
-      Powered by CiganyHUB Key Gateway &bull; Auto-expiring tokens
+      Powered by LootLabs &bull; CiganyHUB Gateway
     </div>
   </div>
 
@@ -374,28 +388,45 @@
     let countdownInterval = null;
     let currentKey = "";
 
-    async function generateKey() {
-      const genBtn = document.getElementById('genBtn');
-      genBtn.disabled = true;
-      genBtn.innerText = "Generating key...";
+    // On page load, check if redirected back from LootLabs with key
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const claimed = params.get('claimed');
+      const key = params.get('key');
+      const exp = params.get('exp');
+
+      if (claimed === 'true' && key) {
+        currentKey = key;
+        document.getElementById('keyText').innerText = key;
+        document.getElementById('keyBox').style.display = 'block';
+        document.getElementById('mainBadge').className = 'badge badge-unlocked';
+        document.getElementById('badgeText').innerText = 'KEY UNLOCKED VIA LOOTLABS';
+        
+        const expiresAt = exp ? parseInt(exp, 10) : (Date.now() + 8 * 3600 * 1000);
+        startCountdown(expiresAt);
+      }
+    });
+
+    async function goToLootLabs() {
+      const lootBtn = document.getElementById('lootBtn');
+      lootBtn.disabled = true;
+      lootBtn.innerText = "⏳ Generating LootLabs Link...";
 
       try {
-        const res = await fetch('/api/generate', { method: 'POST' });
+        const res = await fetch('/api/create-link', { method: 'POST' });
         const data = await res.json();
 
-        if (data.success) {
-          currentKey = data.key;
-          document.getElementById('keyText').innerText = data.key;
-          document.getElementById('keyBox').style.display = 'block';
-          startCountdown(data.expiresAt);
+        if (data.success && data.adUrl) {
+          window.location.href = data.adUrl;
         } else {
-          alert("Error: " + data.message);
+          alert("Could not create LootLabs link. Please verify your LootLabs API key in Vercel.");
+          lootBtn.disabled = false;
+          lootBtn.innerText = "⚡ Complete LootLabs Ad (Get 8-Hour Key)";
         }
       } catch (e) {
-        alert("Failed to contact key server: " + e.message);
-      } finally {
-        genBtn.disabled = false;
-        genBtn.innerText = "Generate New 8-Hour Key";
+        alert("Error connecting to server: " + e.message);
+        lootBtn.disabled = false;
+        lootBtn.innerText = "⚡ Complete LootLabs Ad (Get 8-Hour Key)";
       }
     }
 
@@ -411,7 +442,7 @@
           document.getElementById('hours').innerText = "00";
           document.getElementById('minutes').innerText = "00";
           document.getElementById('seconds').innerText = "00";
-          document.getElementById('keyText').innerText = "KEY EXPIRED - PLEASE GENERATE A NEW ONE";
+          document.getElementById('keyText').innerText = "KEY EXPIRED - PLEASE COMPLETE LOOTLABS AGAIN";
           return;
         }
 
