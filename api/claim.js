@@ -1,10 +1,10 @@
 const crypto = require('crypto');
 const https = require('https');
-const { registerKeyRecord } = require('./verify');
+const { saveKeyRecord } = require('./verify');
 
 const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 const EXPIRATION_HOURS = 8;
-const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || ''; // Paste your webhook URL in Vercel Env Vars or here
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || '';
 
 function safeRedirect(res, url) {
   try {
@@ -121,8 +121,15 @@ module.exports = (req, res) => {
       revoked: false
     };
 
-    registerKeyRecord(key, keyRecord);
-    notifyDiscord(keyRecord);
+    // Safe Non-Blocking Logging
+    try {
+      if (typeof saveKeyRecord === 'function') {
+        saveKeyRecord(keyRecord).catch(() => {});
+      }
+      notifyDiscord(keyRecord);
+    } catch(err) {
+      console.warn('[Logging Warning]', err);
+    }
 
     return safeRedirect(res, `/?claimed=true&key=${encodeURIComponent(key)}&exp=${expiresAt}`);
   } catch (globalErr) {
