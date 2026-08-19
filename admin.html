@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CiganyHub — Owner Management Portal</title>
+    <title>CiganyHub — Owner Key Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Orbitron:wght@700;900&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -13,7 +13,7 @@
         :root {
             --bg-base: #05040a;
             --bg-surface: #0a0814;
-            --card-bg: rgba(14, 12, 24, 0.85);
+            --card-bg: rgba(14, 12, 24, 0.88);
             --card-border: rgba(255, 30, 39, 0.28);
             --card-border-hover: rgba(255, 30, 39, 0.6);
             --accent-red: #ff1e27;
@@ -23,6 +23,7 @@
             --text-muted: #64748b;
             --success-green: #22c55e;
             --gold: #f59e0b;
+            --danger-red: #ef4444;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -33,19 +34,18 @@
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: center;
-            padding: 24px 16px;
+            padding: 30px 16px;
             background-image: 
-                radial-gradient(circle at 50% 0%, rgba(255, 30, 39, 0.18) 0%, transparent 65%),
+                radial-gradient(circle at 50% 0%, rgba(255, 30, 39, 0.16) 0%, transparent 65%),
                 radial-gradient(circle at 100% 100%, rgba(255, 30, 39, 0.08) 0%, transparent 50%);
         }
 
         .container {
             width: 100%;
-            max-width: 580px;
+            max-width: 960px;
             display: flex;
             flex-direction: column;
-            gap: 18px;
+            gap: 20px;
         }
 
         .header {
@@ -64,7 +64,7 @@
             font-weight: 700;
             letter-spacing: 0.06em;
             color: var(--accent-red);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             text-transform: uppercase;
         }
 
@@ -79,7 +79,32 @@
         }
 
         .title span { color: var(--accent-red); text-shadow: 0 0 20px var(--accent-glow); }
-        .subtitle { font-size: 0.88rem; color: var(--text-sub); }
+        .subtitle { font-size: 0.9rem; color: var(--text-sub); }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-val {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: var(--text-main);
+        }
+
+        .stat-val.active-count { color: var(--success-green); }
+        .stat-val.revoked-count { color: var(--danger-red); }
+        .stat-lbl { font-size: 0.75rem; color: var(--text-sub); text-transform: uppercase; margin-top: 4px; font-weight: 600; }
 
         .card {
             background: var(--card-bg);
@@ -123,9 +148,8 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            width: 100%;
-            padding: 13px 18px;
-            border-radius: 9px;
+            padding: 12px 18px;
+            border-radius: 8px;
             font-size: 0.88rem;
             font-weight: 700;
             letter-spacing: 0.05em;
@@ -149,8 +173,6 @@
             font-weight: 800;
         }
 
-        .btn-gold:hover { transform: translateY(-2px); filter: brightness(1.1); }
-
         .btn-secondary {
             background: rgba(255, 255, 255, 0.06);
             color: var(--text-main);
@@ -161,7 +183,7 @@
 
         .preset-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 8px;
             margin-bottom: 14px;
         }
@@ -185,23 +207,115 @@
             color: white;
         }
 
-        .input-text {
-            width: 100%;
+        .custom-duration-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .input-text, .select-unit {
             background: rgba(0, 0, 0, 0.55);
             border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 8px;
-            padding: 12px 14px;
+            padding: 11px 14px;
             color: white;
             font-family: 'Fira Code', monospace;
             font-size: 0.85rem;
             outline: none;
-            margin-bottom: 12px;
+            width: 100%;
         }
 
-        .input-text:focus {
+        .select-unit {
+            width: 140px;
+            cursor: pointer;
+        }
+
+        .select-unit option {
+            background: #0f0d1a;
+            color: white;
+        }
+
+        .input-text:focus, .select-unit:focus {
             border-color: var(--accent-red);
             box-shadow: 0 0 10px rgba(255, 30, 39, 0.2);
         }
+
+        .table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(0, 0, 0, 0.4);
+            color: var(--text-sub);
+            padding: 10px 12px;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            vertical-align: middle;
+            color: var(--text-main);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .key-badge {
+            display: inline-block;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #7dd3fc;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .status-tag {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .status-tag.active { background: rgba(34, 197, 94, 0.12); color: var(--success-green); border: 1px solid rgba(34, 197, 94, 0.3); }
+        .status-tag.expired { background: rgba(148, 163, 184, 0.1); color: var(--text-sub); border: 1px solid rgba(148, 163, 184, 0.2); }
+        .status-tag.revoked { background: rgba(239, 68, 68, 0.12); color: var(--danger-red); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        .btn-table-action {
+            padding: 6px 10px;
+            font-size: 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .btn-copy { background: rgba(255, 255, 255, 0.08); color: white; margin-right: 4px; }
+        .btn-copy:hover { background: rgba(255, 255, 255, 0.15); }
+        .btn-del { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .btn-del:hover { background: rgba(239, 68, 68, 0.3); }
 
         .result-box {
             display: none;
@@ -214,25 +328,17 @@
             line-height: 1.5;
         }
 
-        .result-box.success {
-            display: block;
-            background: rgba(34, 197, 94, 0.08);
-            border: 1px solid rgba(34, 197, 94, 0.35);
-            color: #86efac;
-        }
+        .result-box.success { display: block; background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.35); color: #86efac; }
+        .result-box.error { display: block; background: rgba(255, 30, 39, 0.08); border: 1px solid rgba(255, 30, 39, 0.35); color: #ff6b72; }
 
-        .result-box.error {
-            display: block;
-            background: rgba(255, 30, 39, 0.08);
-            border: 1px solid rgba(255, 30, 39, 0.35);
-            color: #ff6b72;
-        }
-
-        .footer {
+        .empty-state {
             text-align: center;
-            font-size: 0.75rem;
+            padding: 30px;
             color: var(--text-muted);
+            font-size: 0.85rem;
         }
+
+        .footer { text-align: center; font-size: 0.75rem; color: var(--text-muted); }
     </style>
 </head>
 <body>
@@ -240,8 +346,8 @@
         <!-- Header -->
         <div class="header">
             <div class="badge"><i class="fa-solid fa-crown"></i> OWNER CONSOLE</div>
-            <h1 class="title">CIGANY<span>ADMIN</span></h1>
-            <p class="subtitle">Mint custom-duration keys and manage access revocations.</p>
+            <h1 class="title">CIGANY<span>DASHBOARD</span></h1>
+            <p class="subtitle">Mint custom-duration keys and monitor active access tokens.</p>
         </div>
 
         <!-- 1. Authentication -->
@@ -250,84 +356,163 @@
                 <span class="card-title"><i class="fa-solid fa-lock"></i> Admin Authentication</span>
                 <span class="card-tag">REQUIRED</span>
             </div>
-            <input type="password" id="adminPassword" class="input-text" placeholder="Enter Admin Password..." value="" />
+            <input type="password" id="adminPassword" class="input-text" placeholder="Enter Admin Password..." onchange="onPasswordChange()" />
         </div>
 
-        <!-- 2. Mint Custom Keys -->
+        <!-- 2. Statistics Summary -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div id="statTotal" class="stat-val">0</div>
+                <div class="stat-lbl">Total Minted</div>
+            </div>
+            <div class="stat-card">
+                <div id="statActive" class="stat-val active-count">0</div>
+                <div class="stat-lbl">Active Keys</div>
+            </div>
+            <div class="stat-card">
+                <div id="statRevoked" class="stat-val revoked-count">0</div>
+                <div class="stat-lbl">Revoked Keys</div>
+            </div>
+        </div>
+
+        <!-- 3. Mint Custom Duration Keys -->
         <div class="card">
             <div class="card-header">
-                <span class="card-title"><i class="fa-solid fa-key"></i> Mint Custom Key</span>
+                <span class="card-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Mint Custom Key</span>
                 <span class="card-tag">GENERATOR</span>
             </div>
 
+            <!-- Quick Presets -->
             <div class="preset-grid">
-                <button class="preset-btn" onclick="selectDuration(1, '1 Hour')">1 Hour</button>
-                <button class="preset-btn" onclick="selectDuration(10, '10 Hours')">10 Hours</button>
-                <button class="preset-btn active" onclick="selectDuration(24, '24 Hours (1 Day)')">24 Hours</button>
-                <button class="preset-btn" onclick="selectDuration(168, '7 Days')">7 Days</button>
-                <button class="preset-btn" onclick="selectDuration(720, '30 Days')">30 Days</button>
-                <button class="preset-btn" onclick="selectDuration(8760, '365 Days')">365 Days</button>
-                <button class="preset-btn" style="grid-column: span 3; color: var(--gold); border-color: rgba(245, 158, 11, 0.3);" onclick="selectLifetime()">⭐ Lifetime Access (100 Years)</button>
+                <button class="preset-btn" onclick="applyPreset(1, 'hours')">1 Hour</button>
+                <button class="preset-btn" onclick="applyPreset(10, 'hours')">10 Hours</button>
+                <button class="preset-btn" onclick="applyPreset(24, 'hours')">24 Hours</button>
+                <button class="preset-btn" onclick="applyPreset(7, 'days')">7 Days</button>
+                <button class="preset-btn" onclick="applyPreset(30, 'days')">30 Days</button>
+                <button class="preset-btn" onclick="applyPreset(365, 'days')">365 Days</button>
+                <button class="preset-btn" style="grid-column: span 2; color: var(--gold); border-color: rgba(245, 158, 11, 0.35);" onclick="applyLifetime()">⭐ Lifetime Access (100 Years)</button>
             </div>
 
-            <input type="text" id="customNote" class="input-text" placeholder="Optional Note (e.g. VIP Buyer #42, Testing)" />
-            <input type="text" id="customHwid" class="input-text" placeholder="Optional Specific HWID (leave empty for auto-lock)" />
+            <!-- Custom Duration Input -->
+            <div class="custom-duration-row">
+                <input type="number" id="customDurationVal" class="input-text" placeholder="Custom Duration (e.g. 10, 45, 365)" value="24" min="0.1" step="any" />
+                <select id="customDurationUnit" class="select-unit">
+                    <option value="hours" selected>Hours</option>
+                    <option value="days">Days</option>
+                    <option value="months">Months</option>
+                    <option value="years">Years</option>
+                    <option value="minutes">Minutes</option>
+                </select>
+            </div>
 
-            <button class="btn btn-red" onclick="generateAdminKey()">
-                <i class="fa-solid fa-wand-magic-sparkles"></i> MINT KEY NOW
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <input type="text" id="customNote" class="input-text" placeholder="Customer / Buyer Note (e.g. VIP #21, Discord @user)" style="margin-bottom:0;" />
+                <input type="text" id="customHwid" class="input-text" placeholder="Optional Specific HWID" style="margin-bottom:0;" />
+            </div>
+
+            <button class="btn btn-red" onclick="mintCustomKey()">
+                <i class="fa-solid fa-plus-circle"></i> MINT KEY NOW
             </button>
 
             <div id="genResult" class="result-box"></div>
         </div>
 
-        <!-- 3. Revoke / Delete Key -->
+        <!-- 4. Keys Dashboard Table -->
         <div class="card">
             <div class="card-header">
-                <span class="card-title"><i class="fa-solid fa-ban"></i> Revoke / Delete Key</span>
-                <span class="card-tag">BLACKLIST</span>
+                <span class="card-title"><i class="fa-solid fa-table-list"></i> Key Management Dashboard</span>
+                <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="loadDashboard()">
+                    <i class="fa-solid fa-rotate"></i> REFRESH
+                </button>
             </div>
 
-            <input type="text" id="revokeKeyInput" class="input-text" placeholder="Paste KEY_... to delete and blacklist" />
-            <input type="text" id="revokeReason" class="input-text" placeholder="Reason (e.g. Leaked, Refunded, Expired early)" />
-
-            <button class="btn btn-secondary" style="border-color: rgba(255, 30, 39, 0.4); color: #ff6b72;" onclick="revokeKeyAction()">
-                <i class="fa-solid fa-trash"></i> REVOKE KEY IMMEDIATELY
-            </button>
-
-            <div id="revokeResult" class="result-box"></div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Key Token</th>
+                            <th>Duration</th>
+                            <th>Created At</th>
+                            <th>Expires At</th>
+                            <th>Note / Tag</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="keysTableBody">
+                        <tr>
+                            <td colspan="7" class="empty-state">Enter Admin Password to load keys...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <div class="footer">
-            CiganyHub Owner Panel &bull; Authorized Access Only
+            CiganyHub Owner Console &bull; Confidential Access
         </div>
     </div>
 
     <script>
-        let selectedHours = 24;
-        let isLifetimeSelected = false;
+        let isLifetimeMode = false;
+        const LOCAL_STORAGE_KEYS = 'ciganyhub_admin_keys_registry';
+        const LOCAL_STORAGE_PASS = 'ciganyhub_admin_password';
 
-        function selectDuration(hours, label) {
-            selectedHours = hours;
-            isLifetimeSelected = false;
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedPass = localStorage.getItem(LOCAL_STORAGE_PASS);
+            if (savedPass) {
+                document.getElementById('adminPassword').value = savedPass;
+                loadDashboard();
+            }
+        });
+
+        function onPasswordChange() {
+            const pass = document.getElementById('adminPassword').value.trim();
+            if (pass) {
+                localStorage.setItem(LOCAL_STORAGE_PASS, pass);
+                loadDashboard();
+            }
+        }
+
+        function applyPreset(val, unit) {
+            isLifetimeMode = false;
+            document.getElementById('customDurationVal').value = val;
+            document.getElementById('customDurationUnit').value = unit;
             document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
             event.target.classList.add('active');
         }
 
-        function selectLifetime() {
-            isLifetimeSelected = true;
+        function applyLifetime() {
+            isLifetimeMode = true;
+            document.getElementById('customDurationVal').value = '100';
+            document.getElementById('customDurationUnit').value = 'years';
             document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
             event.target.classList.add('active');
         }
 
-        async function generateAdminKey() {
+        function getStoredKeys() {
+            try {
+                return JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS) || '[]');
+            } catch(e) {
+                return [];
+            }
+        }
+
+        function saveStoredKeys(list) {
+            localStorage.setItem(LOCAL_STORAGE_KEYS, JSON.stringify(list));
+        }
+
+        async function mintCustomKey() {
             const password = document.getElementById('adminPassword').value.trim();
-            const note = document.getElementById('customNote').value.trim();
-            const hwid = document.getElementById('customHwid').value.trim();
+            const val = parseFloat(document.getElementById('customDurationVal').value || 0);
+            const unit = document.getElementById('customDurationUnit').value;
+            const note = document.getElementById('customNote').value.trim() || 'Owner Minted Key';
+            const hwid = document.getElementById('customHwid').value.trim() || null;
             const resultBox = document.getElementById('genResult');
 
             if (!password) {
                 resultBox.className = 'result-box error';
-                resultBox.innerText = 'Please enter your Admin Password above.';
+                resultBox.innerText = 'Please enter your Admin Password first.';
                 return;
             }
 
@@ -339,10 +524,11 @@
                 const payload = {
                     password: password,
                     action: 'generate',
-                    hours: selectedHours,
-                    lifetime: isLifetimeSelected,
+                    customValue: val,
+                    customUnit: unit,
+                    lifetime: isLifetimeMode,
                     note: note,
-                    hwid: hwid || null
+                    hwid: hwid
                 };
 
                 const res = await fetch('/api/admin', {
@@ -353,21 +539,29 @@
 
                 const data = await res.json();
 
-                if (data.success && data.key) {
+                if (data.success && data.record) {
                     resultBox.className = 'result-box success';
                     resultBox.innerHTML = `
-                        <strong>KEY GENERATED SUCCESSFULLY!</strong><br><br>
-                        <strong>Key:</strong><br>${data.key}<br><br>
-                        <strong>Duration:</strong> ${data.durationHours}<br>
-                        <strong>Expires:</strong> ${data.formattedExpires}<br>
-                        <strong>Device Lock:</strong> ${data.boundHwid}<br><br>
-                        <button class="btn btn-gold" style="padding: 8px 12px; font-size: 0.8rem;" onclick="copyMintedKey('${data.key}')">
+                        <strong>KEY MINTED SUCCESSFULLY!</strong><br><br>
+                        <strong>Key:</strong><br>${data.record.key}<br><br>
+                        <strong>Duration:</strong> ${data.record.durationLabel}<br>
+                        <strong>Created:</strong> ${data.record.formattedCreated}<br>
+                        <strong>Expires:</strong> ${data.record.formattedExpires}<br>
+                        <strong>Note:</strong> ${data.record.note}<br><br>
+                        <button class="btn btn-gold" style="padding: 6px 12px; font-size: 0.8rem; width: auto;" onclick="copyKeyText('${data.record.key}')">
                             <i class="fa-solid fa-copy"></i> COPY KEY
                         </button>
                     `;
+
+                    // Save locally in registry
+                    const stored = getStoredKeys();
+                    stored.unshift(data.record);
+                    saveStoredKeys(stored);
+
+                    loadDashboard();
                 } else {
                     resultBox.className = 'result-box error';
-                    resultBox.innerText = data.message || 'Failed to generate key.';
+                    resultBox.innerText = data.message || 'Failed to mint key.';
                 }
             } catch (err) {
                 resultBox.className = 'result-box error';
@@ -375,57 +569,144 @@
             }
         }
 
-        function copyMintedKey(keyStr) {
-            navigator.clipboard.writeText(keyStr).then(() => {
-                alert('Key copied to clipboard!');
-            });
-        }
-
-        async function revokeKeyAction() {
+        async function loadDashboard() {
             const password = document.getElementById('adminPassword').value.trim();
-            const key = document.getElementById('revokeKeyInput').value.trim();
-            const reason = document.getElementById('revokeReason').value.trim();
-            const resultBox = document.getElementById('revokeResult');
+            const tbody = document.getElementById('keysTableBody');
 
             if (!password) {
-                resultBox.className = 'result-box error';
-                resultBox.innerText = 'Please enter your Admin Password.';
-                return;
-            }
-            if (!key) {
-                resultBox.className = 'result-box error';
-                resultBox.innerText = 'Please paste the key you wish to revoke.';
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Enter Admin Password to load dashboard...</td></tr>';
                 return;
             }
 
-            resultBox.className = 'result-box';
-            resultBox.style.display = 'block';
-            resultBox.innerText = 'Blacklisting key...';
+            // Sync stored keys with server
+            const localKeys = getStoredKeys();
+            if (localKeys.length > 0) {
+                try {
+                    await fetch('/api/admin', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ password: password, action: 'sync-keys', keys: localKeys })
+                    });
+                } catch(e) {}
+            }
 
             try {
                 const res = await fetch('/api/admin', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        password: password,
-                        action: 'revoke',
-                        key: key,
-                        reason: reason || 'Revoked by owner'
-                    })
+                    body: JSON.stringify({ password: password, action: 'list-keys' })
                 });
 
                 const data = await res.json();
 
-                if (data.success) {
-                    resultBox.className = 'result-box success';
-                    resultBox.innerHTML = `<strong>KEY BLACKLISTED & DELETED!</strong><br>Any user attempting to run this key will now be rejected.`;
+                if (data.success && data.keys) {
+                    renderTable(data.keys);
                 } else {
-                    resultBox.className = 'result-box error';
-                    resultBox.innerText = data.message || 'Failed to revoke key.';
+                    tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="color:#ef4444;">${data.message || 'Failed to load keys.'}</td></tr>`;
                 }
             } catch (err) {
-                resultBox.className = 'result-box error';
-                resultBox.innerText = 'Error: ' + err.message;
+                tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="color:#ef4444;">Connection error: ${err.message}</td></tr>`;
+            }
+        }
+
+        function renderTable(keys) {
+            const tbody = document.getElementById('keysTableBody');
+            let activeCount = 0;
+            let revokedCount = 0;
+
+            if (keys.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No keys generated yet. Use the generator above to mint your first key!</td></tr>';
+                document.getElementById('statTotal').innerText = '0';
+                document.getElementById('statActive').innerText = '0';
+                document.getElementById('statRevoked').innerText = '0';
+                return;
+            }
+
+            let html = '';
+            for (const item of keys) {
+                if (item.status === 'active') activeCount++;
+                if (item.status === 'revoked') revokedCount++;
+
+                const statusClass = item.status;
+                const statusLabel = item.status.toUpperCase();
+
+                html += `
+                    <tr>
+                        <td><span class="key-badge" title="${item.key}">${item.key}</span></td>
+                        <td><strong>${item.durationLabel || '8 Hours'}</strong></td>
+                        <td>${item.formattedCreated || new Date(item.createdAt).toLocaleString()}</td>
+                        <td>${item.formattedExpires || (item.isLifetime ? 'Lifetime' : new Date(item.expiresAt).toLocaleString())}</td>
+                        <td>${item.note || 'None'}</td>
+                        <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
+                        <td>
+                            <button class="btn-table-action btn-copy" onclick="copyKeyText('${item.key}')" title="Copy Key"><i class="fa-solid fa-copy"></i></button>
+                            ${item.status !== 'revoked' ? 
+                                `<button class="btn-table-action btn-del" onclick="revokeKeyAction('${item.key}')" title="Revoke/Delete Key"><i class="fa-solid fa-ban"></i></button>` :
+                                `<button class="btn-table-action btn-copy" style="background:rgba(34,197,94,0.2); color:#86efac;" onclick="unrevokeKeyAction('${item.key}')" title="Restore Key"><i class="fa-solid fa-arrow-rotate-left"></i></button>`
+                            }
+                        </td>
+                    </tr>
+                `;
+            }
+
+            tbody.innerHTML = html;
+            document.getElementById('statTotal').innerText = keys.length;
+            document.getElementById('statActive').innerText = activeCount;
+            document.getElementById('statRevoked').innerText = revokedCount;
+        }
+
+        function copyKeyText(str) {
+            navigator.clipboard.writeText(str).then(() => {
+                alert('Key copied to clipboard!');
+            });
+        }
+
+        async function revokeKeyAction(key) {
+            const password = document.getElementById('adminPassword').value.trim();
+            if (!confirm('Are you sure you want to revoke and delete this key? It will immediately stop working.')) return;
+
+            try {
+                const res = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: password, action: 'revoke', key: key, reason: 'Revoked from dashboard' })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // Update local storage
+                    const stored = getStoredKeys();
+                    for (const item of stored) {
+                        if (item.key === key) item.revoked = true;
+                    }
+                    saveStoredKeys(stored);
+                    loadDashboard();
+                } else {
+                    alert('Failed to revoke: ' + data.message);
+                }
+            } catch(e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function unrevokeKeyAction(key) {
+            const password = document.getElementById('adminPassword').value.trim();
+            try {
+                const res = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: password, action: 'unrevoke', key: key })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const stored = getStoredKeys();
+                    for (const item of stored) {
+                        if (item.key === key) item.revoked = false;
+                    }
+                    saveStoredKeys(stored);
+                    loadDashboard();
+                }
+            } catch(e) {
+                alert('Error: ' + e.message);
             }
         }
     </script>
