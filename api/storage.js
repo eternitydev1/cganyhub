@@ -1,162 +1,172 @@
 const https = require('https');
 const crypto = require('crypto');
 
-// Cloud KV Configuration (Works out-of-the-box with Vercel KV / Upstash Redis / JSONBin)
 const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '';
 const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '';
 
-// Local in-memory cache for speed
-const localRevokedCache = new Map();
-const localKeysCache = new Map();
+function hashToken(token) {
+  if (!token) return '';
+  return crypto.createHash('sha256').update(String(token).trim()).digest('hex');
+}
 
-function rawHttpRequest(url, method, headers, data) {
-  return new Promise((resolve, reject) => {
+function kvRequest(path, method = 'GET', data = null) {
+  if (!KV_URL || !KV_TOKEN) return Promise.resolve(null);
+  return new Promise((resolve) => {
     try {
-      const u = new URL(url);
+      const u = new URL(`${KV_URL}${path}`);
+      const headers = {
+        'Authorization': `Bearer ${KV_TOKEN}`
+      };
+      let bodyData = null;
+      if (data) {
+        bodyData = typeof data === 'string' ? data : JSON.stringify(data);
+        headers['Content-Type'] = 'application/json';
+        headers['Content-Length'] = Buffer.byteLength(bodyData);
+      }
+
       const req = https.request({
         hostname: u.hostname,
-        port: u.port || 443,
-        path: u.pathname + u.search,
-        method: method || 'GET',
-        headers: headers || {}
+        path: u.pathname + (u.search || ''),
+        method: method,
+        headers: headers
       }, (res) => {
-        let body = '';
-        res.on('data', chunk => body += chunk);
+        let resBody = '';
+        res.on('data', chunk => resBody += chunk);
         res.on('end', () => {
           try {
-            resolve({ status: res.statusCode, body: JSON.parse(body) });
+            const parsed = JSON.parse(resBody);
+            resolve(parsed.result !== undefined ? parsed.result : parsed);
           } catch(e) {
-            resolve({ status: res.statusCode, body });
+            resolve(resBody);
           }
         });
       });
-      req.on('error', reject);
-      if (data) req.write(typeof data === 'string' ? data : JSON.stringify(data));
+
+      req.on('error', () => resolve(null));
+      req.setTimeout(3000, () => {
+        req.destroy();
+        resolve(null);
+      });
+
+      if (bodyData) req.write(bodyData);
       req.end();
-    } catch(err) {
-      reject(err);
+    } catch(e) {
+      resolve(null);
     }
   });
 }
 
-// ════════════════════════════════════════════════════════
-// REVOCATION BLACKLIST (Cloud Synced)
-// ════════════════════════════════════════════════════════
-async function addRevokedKey(token, reason) {
-  const hash = crypto.createHash('sha256').update(String(token).trim()).digest('hex');
+// Local In-Memory Fallback Cache
+const localRevoked = new Map();
+const localKeys = new Map();
+let localNukeTimestamp = 0;
+
+async function blacklistKey(token, reason = 'Revoked by owner') {
+  const hash = hashToken(token);
   const record = {
-    hash: hash,
     token: token,
+    hash: hash,
     revokedAt: Date.now(),
-    reason: reason || 'Revoked by owner'
+    reason: reason
   };
+  localRevoked.set(hash, record);
 
-  localRevokedCache.set(hash, record);
-
-  // Sync to Cloud KV (Upstash / Vercel KV) if available
   if (KV_URL && KV_TOKEN) {
-    try {
-      await rawHttpRequest(`${KV_URL}/set/revoked_${hash}`, 'POST', {
-        'Authorization': `Bearer ${KV_TOKEN}`,
-        'Content-Type': 'application/json'
-      }, JSON.stringify(record));
-    } catch (e) {
-      console.error('[Storage Error - Revoke]', e);
+    await kvRequest(`/set/blacklist_${hash}`, 'POST', JSON.stringify(record));
+  }
+  return record;
+}
+
+async function unblacklistKey(token) {
+  const hash = hashToken(token);
+  localRevoked.delete(hash);
+
+  if (KV_URL && KV_TOKEN) {
+    await kvRequest(`/del/blacklist_${hash}`, 'POST');
+  }
+}
+
+async function isKeyBlacklisted(token) {
+  const hash = hashToken(token);
+  if (localRevoked.has(hash)) {
+    return localRevoked.get(hash);
+  }
+
+  if (KV_URL && KV_TOKEN) {
+    const res = await kvRequest(`/get/blacklist_${hash}`);
+    if (res) {
+      try {
+        const parsed = typeof res === 'string' ? JSON.parse(res) : res;
+        localRevoked.set(hash, parsed);
+        return parsed;
+      } catch(e) {
+        return { reason: 'Revoked' };
+      }
     }
   }
-
-  return true;
-}
-
-async function removeRevokedKey(token) {
-  const hash = crypto.createHash('sha256').update(String(token).trim()).digest('hex');
-  localRevokedCache.delete(hash);
-
-  if (KV_URL && KV_TOKEN) {
-    try {
-      await rawHttpRequest(`${KV_URL}/del/revoked_${hash}`, 'POST', {
-        'Authorization': `Bearer ${KV_TOKEN}`
-      });
-    } catch (e) {}
-  }
-}
-
-async function checkIsRevoked(token) {
-  const hash = crypto.createHash('sha256').update(String(token).trim()).digest('hex');
-  
-  if (localRevokedCache.has(hash)) {
-    return localRevokedCache.get(hash);
-  }
-
-  if (KV_URL && KV_TOKEN) {
-    try {
-      const res = await rawHttpRequest(`${KV_URL}/get/revoked_${hash}`, 'GET', {
-        'Authorization': `Bearer ${KV_TOKEN}`
-      });
-      if (res.status === 200 && res.body && res.body.result) {
-        const data = typeof res.body.result === 'string' ? JSON.parse(res.body.result) : res.body.result;
-        localRevokedCache.set(hash, data);
-        return data;
-      }
-    } catch (e) {}
-  }
-
   return null;
 }
 
-// ════════════════════════════════════════════════════════
-// KEY REGISTRY TRACKING (Cloud Synced)
-// ════════════════════════════════════════════════════════
-async function saveKeyRecord(keyRecord) {
-  if (!keyRecord || !keyRecord.key) return;
-  const hash = crypto.createHash('sha256').update(String(keyRecord.key).trim()).digest('hex').substring(0, 16);
-  
-  localKeysCache.set(keyRecord.key, keyRecord);
+async function setNukeTimestamp(ts) {
+  localNukeTimestamp = ts || Date.now();
+  localKeys.clear();
 
   if (KV_URL && KV_TOKEN) {
-    try {
-      await rawHttpRequest(`${KV_URL}/set/key_${hash}`, 'POST', {
-        'Authorization': `Bearer ${KV_TOKEN}`,
-        'Content-Type': 'application/json'
-      }, JSON.stringify(keyRecord));
-    } catch (e) {}
+    await kvRequest(`/set/nuke_timestamp`, 'POST', String(localNukeTimestamp));
+  }
+  return localNukeTimestamp;
+}
+
+async function getNukeTimestamp() {
+  if (KV_URL && KV_TOKEN) {
+    const res = await kvRequest(`/get/nuke_timestamp`);
+    if (res) {
+      const parsed = parseInt(res, 10);
+      if (!isNaN(parsed) && parsed > localNukeTimestamp) {
+        localNukeTimestamp = parsed;
+      }
+    }
+  }
+  return localNukeTimestamp;
+}
+
+async function saveKey(keyRecord) {
+  if (!keyRecord || !keyRecord.key) return;
+  localKeys.set(keyRecord.key, keyRecord);
+
+  if (KV_URL && KV_TOKEN) {
+    const hash = hashToken(keyRecord.key).substring(0, 16);
+    await kvRequest(`/set/key_${hash}`, 'POST', JSON.stringify(keyRecord));
   }
 }
 
-async function fetchAllKeyRecords() {
-  const list = Array.from(localKeysCache.values());
-
+async function getAllKeys() {
   if (KV_URL && KV_TOKEN) {
-    try {
-      const keysRes = await rawHttpRequest(`${KV_URL}/keys/key_*`, 'GET', {
-        'Authorization': `Bearer ${KV_TOKEN}`
-      });
-      if (keysRes.status === 200 && Array.isArray(keysRes.body.result)) {
-        for (const k of keysRes.body.result) {
-          const valRes = await rawHttpRequest(`${KV_URL}/get/${k}`, 'GET', {
-            'Authorization': `Bearer ${KV_TOKEN}`
-          });
-          if (valRes.status === 200 && valRes.body && valRes.body.result) {
-            const parsed = typeof valRes.body.result === 'string' ? JSON.parse(valRes.body.result) : valRes.body.result;
-            if (parsed && parsed.key && !localKeysCache.has(parsed.key)) {
-              localKeysCache.set(parsed.key, parsed);
-              list.push(parsed);
-            }
-          }
+    const keys = await kvRequest(`/keys/key_*`);
+    if (Array.isArray(keys) && keys.length > 0) {
+      const records = [];
+      for (const k of keys) {
+        const val = await kvRequest(`/get/${k}`);
+        if (val) {
+          try {
+            const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+            records.push(parsed);
+          } catch(e) {}
         }
       }
-    } catch (e) {}
+      return records;
+    }
   }
-
-  return list;
+  return Array.from(localKeys.values());
 }
 
 module.exports = {
-  addRevokedKey,
-  removeRevokedKey,
-  checkIsRevoked,
-  saveKeyRecord,
-  fetchAllKeyRecords,
-  localRevokedCache,
-  localKeysCache
+  blacklistKey,
+  unblacklistKey,
+  isKeyBlacklisted,
+  setNukeTimestamp,
+  getNukeTimestamp,
+  saveKey,
+  getAllKeys,
+  hashToken
 };
