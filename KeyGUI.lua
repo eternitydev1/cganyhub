@@ -77,20 +77,10 @@ end
 local MY_HWID = getClientHWID()
 
 -- ════════════════════════════════════════════════════════
--- ANTI-HTTPSPY & SECURE HTTP REQUEST
+-- SECURE DIRECT HTTP REQUEST
 -- ════════════════════════════════════════════════════════
 local raw_http_get = (clonefunction and clonefunction(game.HttpGet)) or game.HttpGet
 local raw_request  = (clonefunction and (request and clonefunction(request) or (syn and syn.request and clonefunction(syn.request)) or (http and http.request and clonefunction(http.request)) or (http_request and clonefunction(http_request)))) or (request or (syn and syn.request) or (http and http.request) or http_request)
-
-local function detectHttpSpy()
-    local suspiciousNames = {"HttpSpy", "SimpleSpy", "TurtleSpy", "RemoteSpy", "SpyGui", "Hydroxide", "HttpDebugger"}
-    for _, name in ipairs(suspiciousNames) do
-        if CoreGui:FindFirstChild(name) or (getgenv and getgenv()[name]) then
-            return true
-        end
-    end
-    return false
-end
 
 local function performHttpRequest(url, method, customHeaders, bodyData)
     method = method or "GET"
@@ -102,10 +92,6 @@ local function performHttpRequest(url, method, customHeaders, bodyData)
     headers["X-Timestamp"] = nowTime
     headers["X-Nonce"] = nonce
     headers["X-Client-Ver"] = "1.1"
-
-    if detectHttpSpy() then
-        task.wait(1.5)
-    end
 
     if raw_request then
         local ok, res = pcall(function()
