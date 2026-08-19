@@ -15,11 +15,12 @@ module.exports = async (req, res) => {
   try {
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'cganyhub.vercel.app';
     const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const currentStep = parseInt(req.query.step || (req.body && req.body.step) || '1', 10);
     
-    // Create a temporary signed single-use session token
     const now = Date.now();
     const tokenPayload = {
-      action: 'claim_key',
+      action: 'checkpoint',
+      step: currentStep,
       timestamp: now,
       nonce: crypto.randomBytes(8).toString('hex')
     };
@@ -30,9 +31,8 @@ module.exports = async (req, res) => {
     const signature = hmac.digest('base64url');
     const sessionToken = `${payloadB64}.${signature}`;
 
-    const destinationUrl = `${protocol}://${host}/api/claim?session=${sessionToken}`;
+    const destinationUrl = `${protocol}://${host}/api/claim?step=${currentStep}&session=${sessionToken}`;
 
-    // Call LootLabs API to create an ad link
     const lootRes = await fetch('https://creators.lootlabs.gg/api/public/content_locker', {
       method: 'POST',
       headers: {
@@ -41,18 +41,16 @@ module.exports = async (req, res) => {
         'Accept': 'application/json'
       },
       body: JSON.stringify({
-        title: 'CiganyHUB Key',
+        title: `CiganyHUB Key - Checkpoint ${currentStep}`,
         url: destinationUrl,
         tier_id: 1,
-        number_of_tasks: 1,
+        number_of_tasks: 2,
         theme: 1
       })
     });
 
     const lootData = await lootRes.json();
-    console.log('LootLabs Response:', JSON.stringify(lootData));
 
-    // Extract loot_url from LootLabs API response format
     let adUrl = null;
     if (lootData && Array.isArray(lootData.message) && lootData.message.length > 0) {
       adUrl = lootData.message[0].loot_url || lootData.message[0].url;
@@ -69,12 +67,13 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       success: true,
+      step: currentStep,
       adUrl: adUrl
     });
   } catch (err) {
     return res.status(500).json({
       success: false,
-      message: 'Failed to create LootLabs link: ' + err.message
+      message: 'Failed to create LootLabs checkpoint: ' + err.message
     });
   }
 };
