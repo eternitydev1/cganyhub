@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 
-const SECRET = process.env.KEY_SECRET || 'CIGANYHUB_SECURE_SECRET_CHANGE_ME_987654321';
+const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 const LOOTLABS_API_KEY = process.env.LOOTLABS_API_KEY || 'cb54636de3e8624f4d07141f8d3475c5664ab8160f2afb857a76c996504f53ee';
 
 module.exports = async (req, res) => {
@@ -17,6 +17,7 @@ module.exports = async (req, res) => {
     const protocol = req.headers['x-forwarded-proto'] || 'https';
     const currentStep = parseInt(req.query.step || (req.body && req.body.step) || '1', 10);
     
+    // Create temporary session token
     const now = Date.now();
     const tokenPayload = {
       action: 'checkpoint',
@@ -33,6 +34,7 @@ module.exports = async (req, res) => {
 
     const destinationUrl = `${protocol}://${host}/api/claim?step=${currentStep}&session=${sessionToken}`;
 
+    // Call LootLabs API with 2 tasks configured
     const lootRes = await fetch('https://creators.lootlabs.gg/api/public/content_locker', {
       method: 'POST',
       headers: {
@@ -44,7 +46,7 @@ module.exports = async (req, res) => {
         title: `CiganyHUB Key - Checkpoint ${currentStep}`,
         url: destinationUrl,
         tier_id: 1,
-        number_of_tasks: 2,
+        number_of_tasks: 2, // 2 tasks
         theme: 1
       })
     });
