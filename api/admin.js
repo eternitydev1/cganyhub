@@ -300,6 +300,31 @@ module.exports = async (req, res) => {
       });
     }
 
+    // ══════════════════════════════════════════════════════
+    // ACTION: NUKE / DELETE ALL EXISTING KEYS
+    // ══════════════════════════════════════════════════════
+    if (action === 'nuke-all' || action === 'delete-all') {
+      let count = 0;
+      for (const [key, item] of localKeysRegistry.entries()) {
+        const hash = hashToken(key);
+        localRevokedKeys.set(hash, {
+          hash: hash,
+          token: key,
+          revokedAt: Date.now(),
+          reason: 'Master Owner Nuke: All keys revoked'
+        });
+        count++;
+      }
+      localKeysRegistry.clear();
+
+      return res.status(200).json({
+        success: true,
+        action: 'nuke-all',
+        count: count,
+        message: `Successfully nuked and revoked all ${count} existing keys!`
+      });
+    }
+
     return res.status(400).json({ success: false, message: 'Unknown admin action.' });
   } catch (err) {
     return res.status(500).json({
