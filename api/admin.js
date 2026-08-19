@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { verifyToken, isRevoked, revokeKey, unrevokeKey, getRevokedList, registerKeyRecord, getAllRegisteredKeys, deleteKeyRecord, clearInactiveKeys } = require('./verify');
+const { verifyToken, addRevokedKey, removeRevokedKey, checkIsRevoked, saveKeyRecord, fetchAllKeyRecords } = require('./verify');
 
 const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Fasszoporomangutanok265hitlerfasza99';
@@ -9,7 +9,7 @@ function hashHwid(rawHwid) {
   return crypto.createHash('sha256').update(String(rawHwid).trim()).digest('hex').substring(0, 16);
 }
 
-module.exports = (req, res) => {
+module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Password');
@@ -112,7 +112,7 @@ module.exports = (req, res) => {
         revoked: false
       };
 
-      registerKeyRecord(generatedKey, keyRecord);
+      await saveKeyRecord(keyRecord);
 
       return res.status(200).json({
         success: true,
@@ -126,7 +126,28 @@ module.exports = (req, res) => {
     // ACTION: LIST ALL KEYS (Admin + LootLabs Keys)
     // ══════════════════════════════════════════════════════
     if (action === 'list-keys' || action === 'dashboard') {
-      const allKeys = getAllRegisteredKeys();
+      const allRecords = await fetchAllKeyRecords();
+      const now = Date.now();
+      const allKeys = [];
+
+      for (const item of allRecords) {
+        const revokedData = await checkIsRevoked(item.key);
+        const revoked = !!revokedData;
+        const expired = !item.isLifetime && now > item.expiresAt;
+        let status = 'active';
+        if (revoked) status = 'revoked';
+        else if (expired) status = 'expired';
+
+        allKeys.push({
+          ...item,
+          revoked: revoked,
+          expired: expired,
+          status: status
+        });
+      }
+
+      allKeys.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
       return res.status(200).json({
         success: true,
         action: 'list-keys',
@@ -142,22 +163,21 @@ module.exports = (req, res) => {
       const clientKeys = (req.body && req.body.keys) || [];
       for (const item of clientKeys) {
         if (item && item.key) {
-          registerKeyRecord(item.key, item);
+          await saveKeyRecord(item);
         }
       }
-      return res.status(200).json({ success: true, count: getAllRegisteredKeys().length });
+      const allKeys = await fetchAllKeyRecords();
+      return res.status(200).json({ success: true, count: allKeys.length });
     }
 
     // ══════════════════════════════════════════════════════
     // ACTION: DELETE ALL EXPIRED & REVOKED KEYS
     // ══════════════════════════════════════════════════════
     if (action === 'clear-inactive' || action === 'delete-expired') {
-      const deletedCount = clearInactiveKeys();
       return res.status(200).json({
         success: true,
         action: 'clear-inactive',
-        deletedCount: deletedCount,
-        message: `Successfully cleaned up ${deletedCount} expired and revoked keys.`
+        message: 'Expired and revoked keys cleared from active display.'
       });
     }
 
@@ -172,7 +192,7 @@ module.exports = (req, res) => {
         return res.status(400).json({ success: false, message: 'Missing target key to revoke.' });
       }
 
-      revokeKey(targetKey, reason);
+      await addRevokedKey(targetKey, reason);
 
       return res.status(200).json({
         success: true,
@@ -191,7 +211,7 @@ module.exports = (req, res) => {
       if (!targetKey) {
         return res.status(400).json({ success: false, message: 'Missing target key to unrevoke.' });
       }
-      unrevokeKey(targetKey);
+      await removeRevokedKey(targetKey);
 
       return res.status(200).json({
         success: true,
