@@ -681,7 +681,14 @@
                     body: JSON.stringify({ password: password, action: 'list-keys' })
                 });
 
-                const data = await res.json();
+                const rawText = await res.text();
+                let data;
+                try {
+                    data = JSON.parse(rawText);
+                } catch(e) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="color:#ef4444;">Server error: ${rawText.substring(0, 120)}</td></tr>`;
+                    return;
+                }
 
                 if (data.success && data.keys) {
                     renderTable(data.keys);
