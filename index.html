@@ -3,166 +3,136 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CiganyHUB — Key System</title>
+  <title>CiganyHUB — Key Access</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-dark: #0a0b10;
-      --bg-card: rgba(18, 20, 29, 0.85);
-      --bg-card-border: rgba(255, 255, 255, 0.08);
-      --accent-primary: #6366f1;
-      --accent-glow: rgba(99, 102, 241, 0.35);
-      --accent-cyan: #06b6d4;
-      --accent-success: #10b981;
-      --accent-danger: #ef4444;
-      --text-main: #f3f4f6;
-      --text-muted: #9ca3af;
+      --bg: #090a0f;
+      --card-bg: #11131a;
+      --card-border: #1e2230;
+      --card-hover-border: #2e344a;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --accent-soft: rgba(59, 130, 246, 0.1);
+      --success: #10b981;
+      --success-soft: rgba(16, 185, 129, 0.1);
+      --danger: #ef4444;
+      --danger-soft: rgba(239, 68, 68, 0.1);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
     body {
-      background-color: var(--bg-dark);
-      color: var(--text-main);
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 50% 0%, rgba(59, 130, 246, 0.08) 0px, transparent 60%),
+        radial-gradient(at 100% 100%, rgba(30, 41, 59, 0.15) 0px, transparent 50%);
+      color: var(--text-primary);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 24px;
-      overflow-x: hidden;
-      position: relative;
+      padding: 32px 16px;
     }
 
-    .glow-orb {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(120px);
-      pointer-events: none;
-      z-index: 0;
-    }
-    .glow-1 {
-      width: 400px;
-      height: 400px;
-      background: rgba(99, 102, 241, 0.18);
-      top: 5%;
-      left: 10%;
-    }
-    .glow-2 {
-      width: 450px;
-      height: 450px;
-      background: rgba(6, 182, 212, 0.14);
-      bottom: 5%;
-      right: 10%;
-    }
-
-    .container {
-      position: relative;
-      z-index: 1;
+    .wrapper {
       width: 100%;
-      max-width: 580px;
+      max-width: 480px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 16px;
     }
 
-    .header-card {
+    /* Brand Header */
+    .brand-section {
       text-align: center;
-      background: var(--bg-card);
-      backdrop-filter: blur(20px);
-      border: 1px solid var(--bg-card-border);
-      border-radius: 20px;
-      padding: 32px 24px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      margin-bottom: 8px;
     }
 
-    .badge {
+    .status-pill {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      background: rgba(99, 102, 241, 0.15);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-      color: #a5b4fc;
-      font-size: 12px;
-      font-weight: 600;
+      gap: 8px;
       padding: 4px 12px;
-      border-radius: 9999px;
-      margin-bottom: 12px;
-    }
-    .badge-dot {
-      width: 6px;
-      height: 6px;
-      background: #818cf8;
-      border-radius: 50%;
-      box-shadow: 0 0 8px #818cf8;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
     }
 
-    .badge-unlocked {
-      background: rgba(16, 185, 129, 0.2);
-      border-color: rgba(16, 185, 129, 0.4);
-      color: #34d399;
-    }
-    .badge-unlocked .badge-dot {
-      background: #10b981;
-      box-shadow: 0 0 8px #10b981;
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
     }
 
     h1 {
-      font-size: 28px;
-      font-weight: 800;
-      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 8px;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      margin-bottom: 6px;
     }
 
     .subtitle {
       font-size: 14px;
-      color: var(--text-muted);
+      color: var(--text-secondary);
       line-height: 1.5;
     }
 
+    /* Card Component */
     .card {
-      background: var(--bg-card);
-      backdrop-filter: blur(20px);
-      border: 1px solid var(--bg-card-border);
-      border-radius: 20px;
-      padding: 24px;
-      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      transition: border-color 0.2s ease;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
     }
 
     .card-title {
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
     }
 
-    .btn-group {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
+    /* Buttons */
     .btn {
       width: 100%;
-      padding: 15px 20px;
-      border-radius: 12px;
+      height: 44px;
+      border-radius: var(--radius-md);
       font-size: 14px;
-      font-weight: 700;
+      font-weight: 600;
       cursor: pointer;
-      border: none;
-      transition: all 0.2s ease;
-      display: flex;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
@@ -170,225 +140,226 @@
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-      color: #fff;
-      box-shadow: 0 4px 20px var(--accent-glow);
+      background: var(--text-primary);
+      color: #0b0c10;
     }
     .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 25px rgba(99, 102, 241, 0.5);
+      background: #ffffff;
+      transform: translateY(-1px);
+    }
+    .btn-primary:active {
+      transform: translateY(0);
     }
 
-    .btn-lootlabs {
-      background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
-      color: #fff;
-      box-shadow: 0 4px 20px rgba(236, 72, 153, 0.35);
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--card-border);
+      color: var(--text-primary);
     }
-    .btn-lootlabs:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 25px rgba(236, 72, 153, 0.5);
-    }
-
-    .btn-secondary {
+    .btn-outline:hover {
       background: rgba(255, 255, 255, 0.05);
-      color: var(--text-main);
-      border: 1px solid var(--bg-card-border);
-    }
-    .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--card-hover-border);
     }
 
     .btn-discord {
       background: #5865F2;
-      color: white;
+      color: #ffffff;
     }
     .btn-discord:hover {
       background: #4752C4;
     }
 
-    /* Key Box & Countdown Timer */
-    .key-display {
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-      border-radius: 14px;
-      padding: 18px;
-      margin-top: 16px;
+    /* Key Box & Expiration Counter */
+    .key-panel {
       display: none;
-      animation: fadeIn 0.3s ease;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--card-border);
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+    .timer-display {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      margin-bottom: 12px;
     }
 
-    .key-text-box {
+    .timer-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .timer-value {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-      color: #38bdf8;
-      background: rgba(255, 255, 255, 0.03);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--success);
+      letter-spacing: 0.05em;
+    }
+
+    .key-box {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #7dd3fc;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(125, 211, 252, 0.2);
       padding: 12px;
-      border-radius: 8px;
-      border: 1px dashed rgba(56, 189, 248, 0.3);
+      border-radius: var(--radius-sm);
       word-break: break-all;
       margin-bottom: 12px;
       user-select: all;
+      line-height: 1.4;
     }
 
-    .timer-container {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
+    /* Form Fields */
+    .input-row {
+      display: flex;
       gap: 8px;
-      margin-bottom: 16px;
-      text-align: center;
-    }
-    .timer-unit {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 10px;
-      padding: 10px;
-    }
-    .timer-number {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 20px;
-      font-weight: 700;
-      color: #a5b4fc;
-    }
-    .timer-label {
-      font-size: 11px;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      margin-top: 2px;
     }
 
     .input-field {
-      width: 100%;
+      flex: 1;
+      height: 42px;
       background: rgba(0, 0, 0, 0.3);
-      border: 1px solid var(--bg-card-border);
-      border-radius: 12px;
-      padding: 14px 16px;
-      color: #fff;
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      padding: 0 14px;
+      color: var(--text-primary);
       font-family: 'JetBrains Mono', monospace;
       font-size: 13px;
       outline: none;
-      margin-bottom: 12px;
-    }
-    .input-field:focus {
-      border-color: var(--accent-primary);
+      transition: border-color 0.15s ease;
     }
 
-    .status-msg {
-      font-size: 13px;
+    .input-field:focus {
+      border-color: var(--accent);
+    }
+
+    .btn-verify {
+      width: 100px;
+      height: 42px;
+    }
+
+    .feedback {
+      font-size: 12px;
       margin-top: 10px;
-      padding: 10px 14px;
-      border-radius: 8px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
       display: none;
     }
-    .status-success {
-      background: rgba(16, 185, 129, 0.15);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      color: #34d399;
-    }
-    .status-error {
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #f87171;
+
+    .feedback-success {
+      background: var(--success-soft);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      color: var(--success);
     }
 
+    .feedback-error {
+      background: var(--danger-soft);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      color: var(--danger);
+    }
+
+    /* Footer */
     .footer {
       text-align: center;
       font-size: 12px;
       color: var(--text-muted);
-      margin-top: 10px;
+      margin-top: 8px;
+    }
+
+    /* Icons */
+    .icon {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
     }
   </style>
 </head>
 <body>
-  <div class="glow-orb glow-1"></div>
-  <div class="glow-orb glow-2"></div>
-
-  <div class="container">
-    <!-- Header -->
-    <div class="header-card">
-      <div id="mainBadge" class="badge">
-        <div class="badge-dot"></div>
-        <span id="badgeText">8-HOUR LOOTLABS KEY GATEWAY</span>
+  <div class="wrapper">
+    <!-- Brand -->
+    <div class="brand-section">
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span>Gateway Operational</span>
       </div>
-      <h1>CiganyHUB Access</h1>
-      <p class="subtitle">Complete the short LootLabs link to receive an 8-hour access key to run CiganyHUB scripts.</p>
+      <h1>CiganyHUB</h1>
+      <p class="subtitle">Complete the verification step to receive your 8-hour access key.</p>
     </div>
 
-    <!-- Get Key Card -->
+    <!-- Main Get Key Action -->
     <div class="card">
-      <div class="card-title">
-        <span>💎</span> Step 1: Get Key via LootLabs
-      </div>
-      <div class="btn-group">
-        <button id="lootBtn" class="btn btn-lootlabs" onclick="goToLootLabs()">
-          ⚡ Complete LootLabs Ad (Get 8-Hour Key)
-        </button>
+      <div class="card-header">
+        <span class="card-title">Key Generation</span>
+        <span style="font-size: 12px; color: var(--text-muted);">8-hour duration</span>
       </div>
 
-      <!-- Key Display when claimed -->
-      <div id="keyBox" class="key-display">
-        <div style="font-weight: 700; font-size: 14px; color: #34d399; margin-bottom: 12px; text-align: center;">
-          🎉 Key Unlocked! (Valid for 8 Hours)
-        </div>
-        <div class="timer-container">
-          <div class="timer-unit">
-            <div id="hours" class="timer-number">08</div>
-            <div class="timer-label">Hours</div>
-          </div>
-          <div class="timer-unit">
-            <div id="minutes" class="timer-number">00</div>
-            <div class="timer-label">Mins</div>
-          </div>
-          <div class="timer-unit">
-            <div id="seconds" class="timer-number">00</div>
-            <div class="timer-label">Secs</div>
-          </div>
+      <button id="lootBtn" class="btn btn-primary" onclick="startLootLabs()">
+        <span>Get Key via LootLabs</span>
+        <svg class="icon" viewBox="0 0 24 24">
+          <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+      </button>
+
+      <!-- Active Key Panel -->
+      <div id="keyPanel" class="key-panel">
+        <div class="timer-display">
+          <span class="timer-label">Time Remaining</span>
+          <span id="countdownTimer" class="timer-value">08:00:00</span>
         </div>
 
-        <div id="keyText" class="key-text-box">...</div>
+        <div id="keyText" class="key-box">...</div>
 
-        <button id="copyBtn" class="btn btn-primary" onclick="copyKey()">
-          📋 Copy Key to Clipboard
+        <button id="copyBtn" class="btn btn-outline" onclick="copyKey()">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          <span id="copyText">Copy Key</span>
         </button>
       </div>
     </div>
 
-    <!-- Check Expiration Card -->
+    <!-- Key Validation Card -->
     <div class="card">
-      <div class="card-title">
-        <span>🔍</span> Check Key Expiration
+      <div class="card-header">
+        <span class="card-title">Key Status Checker</span>
       </div>
-      <input type="text" id="checkInput" class="input-field" placeholder="Paste your key here (KEY_...)" />
-      <button class="btn btn-secondary" onclick="verifyKeyInput()">Verify & Check Expiry</button>
-      <div id="checkStatus" class="status-msg"></div>
+      <div class="input-row">
+        <input type="text" id="checkInput" class="input-field" placeholder="Paste your key here..." />
+        <button class="btn btn-outline btn-verify" onclick="checkKey()">Verify</button>
+      </div>
+      <div id="checkFeedback" class="feedback"></div>
     </div>
 
     <!-- Community Card -->
     <div class="card">
-      <div class="card-title">
-        <span>💬</span> Community & Support
+      <div class="card-header">
+        <span class="card-title">Community</span>
       </div>
-      <div class="btn-group">
-        <a href="https://discord.gg/yourserver" target="_blank" class="btn btn-discord">
-          Join Official Discord Server
-        </a>
-      </div>
+      <a href="https://discord.gg/yourserver" target="_blank" class="btn btn-discord">
+        <span>Join Discord Server</span>
+        <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+        </svg>
+      </a>
     </div>
 
     <div class="footer">
-      Powered by LootLabs &bull; CiganyHUB Gateway
+      Secured with cryptographically signed session tokens
     </div>
   </div>
 
   <script>
     let countdownInterval = null;
-    let currentKey = "";
+    let activeKey = "";
 
-    // On page load, check if redirected back from LootLabs with key
     window.addEventListener('DOMContentLoaded', () => {
       const params = new URLSearchParams(window.location.search);
       const claimed = params.get('claimed');
@@ -396,21 +367,19 @@
       const exp = params.get('exp');
 
       if (claimed === 'true' && key) {
-        currentKey = key;
+        activeKey = key;
         document.getElementById('keyText').innerText = key;
-        document.getElementById('keyBox').style.display = 'block';
-        document.getElementById('mainBadge').className = 'badge badge-unlocked';
-        document.getElementById('badgeText').innerText = 'KEY UNLOCKED VIA LOOTLABS';
+        document.getElementById('keyPanel').style.display = 'block';
         
         const expiresAt = exp ? parseInt(exp, 10) : (Date.now() + 8 * 3600 * 1000);
-        startCountdown(expiresAt);
+        runTimer(expiresAt);
       }
     });
 
-    async function goToLootLabs() {
-      const lootBtn = document.getElementById('lootBtn');
-      lootBtn.disabled = true;
-      lootBtn.innerText = "⏳ Generating LootLabs Link...";
+    async function startLootLabs() {
+      const btn = document.getElementById('lootBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span>Creating session...</span>';
 
       try {
         const res = await fetch('/api/create-link', { method: 'POST' });
@@ -419,41 +388,37 @@
         if (data.success && data.adUrl) {
           window.location.href = data.adUrl;
         } else {
-          alert("Could not create LootLabs link. Please verify your LootLabs API key in Vercel.");
-          lootBtn.disabled = false;
-          lootBtn.innerText = "⚡ Complete LootLabs Ad (Get 8-Hour Key)";
+          alert('Unable to initialize verification link.');
+          btn.disabled = false;
+          btn.innerHTML = '<span>Get Key via LootLabs</span>';
         }
-      } catch (e) {
-        alert("Error connecting to server: " + e.message);
-        lootBtn.disabled = false;
-        lootBtn.innerText = "⚡ Complete LootLabs Ad (Get 8-Hour Key)";
+      } catch (err) {
+        alert('Connection error: ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = '<span>Get Key via LootLabs</span>';
       }
     }
 
-    function startCountdown(expiresAt) {
+    function runTimer(expiresAt) {
       if (countdownInterval) clearInterval(countdownInterval);
 
       function update() {
-        const now = Date.now();
-        const diff = expiresAt - now;
+        const diff = expiresAt - Date.now();
 
         if (diff <= 0) {
           clearInterval(countdownInterval);
-          document.getElementById('hours').innerText = "00";
-          document.getElementById('minutes').innerText = "00";
-          document.getElementById('seconds').innerText = "00";
-          document.getElementById('keyText').innerText = "KEY EXPIRED - PLEASE COMPLETE LOOTLABS AGAIN";
+          document.getElementById('countdownTimer').innerText = '00:00:00';
+          document.getElementById('countdownTimer').style.color = 'var(--danger)';
+          document.getElementById('keyText').innerText = 'Session expired. Please generate a new key.';
           return;
         }
 
-        const totalSec = Math.floor(diff / 1000);
-        const h = Math.floor(totalSec / 3600);
-        const m = Math.floor((totalSec % 3600) / 60);
-        const s = totalSec % 60;
+        const sec = Math.floor(diff / 1000);
+        const h = String(Math.floor(sec / 3600)).padStart(2, '0');
+        const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+        const s = String(sec % 60).padStart(2, '0');
 
-        document.getElementById('hours').innerText = String(h).padStart(2, '0');
-        document.getElementById('minutes').innerText = String(m).padStart(2, '0');
-        document.getElementById('seconds').innerText = String(s).padStart(2, '0');
+        document.getElementById('countdownTimer').innerText = `${h}:${m}:${s}`;
       }
 
       update();
@@ -461,45 +426,45 @@
     }
 
     function copyKey() {
-      if (!currentKey) return;
-      navigator.clipboard.writeText(currentKey).then(() => {
-        const copyBtn = document.getElementById('copyBtn');
-        copyBtn.innerText = "✅ Copied to Clipboard!";
+      if (!activeKey) return;
+      navigator.clipboard.writeText(activeKey).then(() => {
+        const textSpan = document.getElementById('copyText');
+        textSpan.innerText = 'Copied to clipboard';
         setTimeout(() => {
-          copyBtn.innerText = "📋 Copy Key to Clipboard";
+          textSpan.innerText = 'Copy Key';
         }, 2000);
       });
     }
 
-    async function verifyKeyInput() {
-      const input = document.getElementById('checkInput').value.trim();
-      const status = document.getElementById('checkStatus');
+    async function checkKey() {
+      const keyVal = document.getElementById('checkInput').value.trim();
+      const feedback = document.getElementById('checkFeedback');
 
-      if (!input) {
-        status.className = "status-msg status-error";
-        status.innerText = "Please enter a key to verify.";
-        status.style.display = "block";
+      if (!keyVal) {
+        feedback.className = 'feedback feedback-error';
+        feedback.innerText = 'Please enter a key to verify.';
+        feedback.style.display = 'block';
         return;
       }
 
-      status.className = "status-msg";
-      status.innerText = "Checking key...";
-      status.style.display = "block";
+      feedback.className = 'feedback';
+      feedback.innerText = 'Validating key...';
+      feedback.style.display = 'block';
 
       try {
-        const res = await fetch(`/api/verify?key=${encodeURIComponent(input)}`);
+        const res = await fetch(`/api/verify?key=${encodeURIComponent(keyVal)}`);
         const data = await res.json();
 
         if (res.ok && data.valid) {
-          status.className = "status-msg status-success";
-          status.innerText = `✅ Key is VALID! Time remaining: ${data.formattedRemaining}`;
+          feedback.className = 'feedback feedback-success';
+          feedback.innerText = `Valid session (${data.formattedRemaining} remaining).`;
         } else {
-          status.className = "status-msg status-error";
-          status.innerText = `❌ ${data.message || 'Invalid key.'}`;
+          feedback.className = 'feedback feedback-error';
+          feedback.innerText = data.message || 'Key is invalid or expired.';
         }
       } catch (e) {
-        status.className = "status-msg status-error";
-        status.innerText = `❌ Verification error: ${e.message}`;
+        feedback.className = 'feedback feedback-error';
+        feedback.innerText = 'Verification request failed.';
       }
     }
   </script>
