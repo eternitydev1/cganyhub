@@ -13,9 +13,10 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
+    const host = req.headers['x-forwarded-host'] || req.headers.host || 'cganyhub.vercel.app';
     const protocol = req.headers['x-forwarded-proto'] || 'https';
     
+    // Create a temporary signed single-use session token
     const now = Date.now();
     const tokenPayload = {
       action: 'claim_key',
@@ -31,6 +32,7 @@ module.exports = async (req, res) => {
 
     const destinationUrl = `${protocol}://${host}/api/claim?session=${sessionToken}`;
 
+    // Call LootLabs API to create an ad link
     const lootRes = await fetch('https://creators.lootlabs.gg/api/public/content_locker', {
       method: 'POST',
       headers: {
@@ -39,7 +41,7 @@ module.exports = async (req, res) => {
         'Accept': 'application/json'
       },
       body: JSON.stringify({
-        title: 'CiganyHUB Key Generation',
+        title: 'CiganyHUB Key',
         url: destinationUrl,
         tier_id: 1,
         number_of_tasks: 1,
@@ -48,11 +50,26 @@ module.exports = async (req, res) => {
     });
 
     const lootData = await lootRes.json();
-    const adUrl = lootData.lootlabs_url || lootData.url || lootData.data?.url || lootData.data?.lootlabs_url;
+    console.log('LootLabs Response:', JSON.stringify(lootData));
+
+    // Extract loot_url from LootLabs API response format
+    let adUrl = null;
+    if (lootData && Array.isArray(lootData.message) && lootData.message.length > 0) {
+      adUrl = lootData.message[0].loot_url || lootData.message[0].url;
+    } else if (lootData && lootData.loot_url) {
+      adUrl = lootData.loot_url;
+    }
+
+    if (!adUrl) {
+      return res.status(500).json({
+        success: false,
+        message: 'LootLabs did not return an ad URL: ' + JSON.stringify(lootData)
+      });
+    }
 
     return res.status(200).json({
       success: true,
-      adUrl: adUrl || destinationUrl
+      adUrl: adUrl
     });
   } catch (err) {
     return res.status(500).json({
