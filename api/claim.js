@@ -1,6 +1,7 @@
 const crypto = require('crypto');
+const { registerKeyRecord } = require('./verify');
 
-const SECRET = process.env.KEY_SECRET || 'CIGANYHUB_SECURE_SECRET_CHANGE_ME_987654321';
+const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 const EXPIRATION_HOURS = 8;
 
 function safeRedirect(res, url) {
@@ -57,6 +58,8 @@ module.exports = (req, res) => {
       v: 1,
       iat: now,
       exp: expiresAt,
+      note: 'LootLabs Checkpoint Key',
+      durationLabel: '8 Hours',
       nonce: crypto.randomBytes(6).toString('hex')
     };
 
@@ -66,6 +69,21 @@ module.exports = (req, res) => {
     const keySig = keyHmac.digest('base64url');
 
     const key = `KEY_${keyPayloadB64}.${keySig}`;
+
+    // Auto-register in Dashboard Registry
+    registerKeyRecord(key, {
+      key: key,
+      note: 'LootLabs Checkpoint Key',
+      source: 'LootLabs Gateway',
+      isLifetime: false,
+      durationLabel: '8 Hours',
+      createdAt: now,
+      formattedCreated: new Date(now).toLocaleString(),
+      expiresAt: expiresAt,
+      formattedExpires: new Date(expiresAt).toLocaleString(),
+      boundHwid: 'Unbound (Auto-locks on first device)',
+      revoked: false
+    });
 
     return safeRedirect(res, `/?claimed=true&key=${encodeURIComponent(key)}&exp=${expiresAt}`);
   } catch (globalErr) {
