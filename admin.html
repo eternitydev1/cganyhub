@@ -460,9 +460,12 @@
         <div class="card">
             <div class="card-header">
                 <span class="card-title"><i class="fa-solid fa-table-list"></i> Key Management Dashboard</span>
-                <div style="display:flex; gap:8px;">
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn btn-danger" style="font-size:0.75rem; padding:6px 12px; background:rgba(239, 68, 68, 0.25); border-color:#ef4444;" onclick="nukeAllKeys()">
+                        <i class="fa-solid fa-radiation"></i> NUKE ALL KEYS
+                    </button>
                     <button class="btn btn-danger" style="font-size:0.75rem; padding:6px 12px;" onclick="deleteAllExpiredKeys()">
-                        <i class="fa-solid fa-trash-can"></i> DELETE ALL EXPIRED & REVOKED
+                        <i class="fa-solid fa-trash-can"></i> CLEAR EXPIRED
                     </button>
                     <button class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px;" onclick="loadDashboard()">
                         <i class="fa-solid fa-rotate"></i> REFRESH
@@ -755,6 +758,34 @@
             navigator.clipboard.writeText(str).then(() => {
                 alert('Key copied to clipboard!');
             });
+        }
+
+        async function nukeAllKeys() {
+            const password = document.getElementById('adminPassword').value.trim();
+            if (!password) {
+                alert('Please enter your Admin Password first.');
+                return;
+            }
+            if (!confirm('⚠️ MASTER NUKE: Are you sure you want to DELETE and PERMANENTLY REVOKE ALL existing keys? Every single active key will stop working in Roblox immediately!')) return;
+
+            try {
+                const res = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: password, action: 'nuke-all' })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    localStorage.removeItem(LOCAL_STORAGE_KEYS);
+                    alert(data.message || 'All keys successfully nuked and revoked!');
+                    loadDashboard();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch(e) {
+                alert('Error nuking keys: ' + e.message);
+            }
         }
 
         async function deleteAllExpiredKeys() {
