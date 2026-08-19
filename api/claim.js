@@ -4,7 +4,7 @@ const { saveKeyRecord } = require('./verify');
 
 const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 const EXPIRATION_HOURS = 8;
-const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || '';
+const DISCORD_WEBHOOK_URL = process.env.https://discord.com/api/webhooks/1526481123973136387/M0MW-HHESq7oC0EokriBr-Dei5yY50wYgtsAC_iM_8oH08MWteyezuDhg8WwzxmwUmZp || '';
 
 function safeRedirect(res, url) {
   try {
