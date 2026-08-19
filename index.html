@@ -48,7 +48,6 @@
             position: relative;
         }
 
-        /* Ambient Glow Effect */
         .ambient-glow {
             position: absolute;
             width: 500px;
@@ -71,7 +70,6 @@
             gap: 18px;
         }
 
-        /* Header Section */
         .header {
             text-align: center;
             margin-bottom: 6px;
@@ -129,7 +127,6 @@
             font-weight: 400;
         }
 
-        /* Glassmorphism Card */
         .card {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
@@ -172,11 +169,21 @@
 
         .card-tag {
             font-family: 'Fira Code', monospace;
-            font-size: 0.75rem;
-            color: var(--text-muted);
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--accent-red);
+            background: rgba(255, 30, 39, 0.1);
+            border: 1px solid rgba(255, 30, 39, 0.3);
+            padding: 3px 8px;
+            border-radius: 6px;
         }
 
-        /* Buttons */
+        .card-tag.done {
+            color: var(--success-green);
+            background: rgba(34, 197, 94, 0.1);
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+
         .btn {
             width: 100%;
             height: 48px;
@@ -234,7 +241,6 @@
             transform: translateY(-2px);
         }
 
-        /* Unlocked Key Container */
         .key-panel {
             display: none;
             margin-top: 16px;
@@ -295,7 +301,6 @@
             line-height: 1.45;
         }
 
-        /* Status Checker Input Row */
         .input-group {
             display: flex;
             gap: 8px;
@@ -346,7 +351,6 @@
             color: #ff6b72;
         }
 
-        /* Footer */
         .footer {
             text-align: center;
             font-size: 0.75rem;
@@ -367,18 +371,18 @@
                 <span id="badgeText">GATEWAY ACTIVE</span>
             </div>
             <h1 class="title">CIGANY<span>HUB</span></h1>
-            <p class="subtitle">Complete the verification step to acquire your 8-hour access key.</p>
+            <p id="subText" class="subtitle">Complete the required checkpoints to unlock your 8-hour access key.</p>
         </div>
 
-        <!-- Main Card: Get Key -->
+        <!-- Main Card: Checkpoint / Key -->
         <div class="card">
             <div class="card-header">
                 <span class="card-title"><i class="fa-solid fa-key"></i> Key Generation</span>
-                <span class="card-tag">8H SESSION</span>
+                <span id="stepTag" class="card-tag">CHECKPOINT (0/2)</span>
             </div>
 
-            <button id="lootBtn" class="btn btn-red" onclick="startLootLabs()">
-                <i class="fa-solid fa-lock-open"></i> GET KEY (LOOTLABS)
+            <button id="lootBtn" class="btn btn-red" onclick="startCheckpoint()">
+                <i class="fa-solid fa-lock-open"></i> <span id="btnText">GET KEY - STEP 1 (0/2)</span>
             </button>
 
             <!-- Key Display Panel -->
@@ -430,34 +434,53 @@
     <script>
         let countdownInterval = null;
         let activeKey = "";
+        let currentStep = 1;
 
         window.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
             const claimed = params.get('claimed');
             const key = params.get('key');
             const exp = params.get('exp');
+            const step = params.get('step');
 
             if (claimed === 'true' && key) {
                 activeKey = key;
                 document.getElementById('keyText').innerText = key;
                 document.getElementById('keyPanel').style.display = 'block';
-                
+                document.getElementById('lootBtn').style.display = 'none';
+
                 const dot = document.querySelector('.badge-dot');
                 if (dot) dot.classList.add('green');
-                document.getElementById('badgeText').innerText = 'KEY UNLOCKED';
+                document.getElementById('badgeText').innerText = 'KEY UNLOCKED (2/2)';
+                
+                const stepTag = document.getElementById('stepTag');
+                stepTag.innerText = 'UNLOCKED (2/2)';
+                stepTag.classList.add('done');
+
+                document.getElementById('subText').innerText = 'All checkpoints complete! Your 8-hour access key is active.';
 
                 const expiresAt = exp ? parseInt(exp, 10) : (Date.now() + 8 * 3600 * 1000);
                 runTimer(expiresAt);
+            } else if (step === '2') {
+                currentStep = 2;
+                document.getElementById('stepTag').innerText = 'CHECKPOINT (1/2)';
+                document.getElementById('btnText').innerText = 'CONTINUE - STEP 2 (1/2)';
+                document.getElementById('subText').innerText = 'Step 1 complete! Complete the final checkpoint to unlock your key.';
+                document.getElementById('badgeText').innerText = 'STEP 1 OF 2 COMPLETED';
+            } else {
+                currentStep = 1;
+                document.getElementById('stepTag').innerText = 'CHECKPOINT (0/2)';
+                document.getElementById('btnText').innerText = 'GET KEY - STEP 1 (0/2)';
             }
         });
 
-        async function startLootLabs() {
+        async function startCheckpoint() {
             const btn = document.getElementById('lootBtn');
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> GENERATING LINK...';
 
             try {
-                const res = await fetch('/api/create-link', { method: 'POST' });
+                const res = await fetch(`/api/create-link?step=${currentStep}`, { method: 'POST' });
                 const data = await res.json();
 
                 if (data.success && data.adUrl) {
@@ -465,12 +488,12 @@
                 } else {
                     alert('Unable to initialize verification link.');
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="fa-solid fa-lock-open"></i> GET KEY (LOOTLABS)';
+                    btn.innerHTML = `<i class="fa-solid fa-lock-open"></i> <span id="btnText">GET KEY - STEP ${currentStep} (${currentStep - 1}/2)</span>`;
                 }
             } catch (err) {
                 alert('Connection error: ' + err.message);
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-lock-open"></i> GET KEY (LOOTLABS)';
+                btn.innerHTML = `<i class="fa-solid fa-lock-open"></i> <span id="btnText">GET KEY - STEP ${currentStep} (${currentStep - 1}/2)</span>`;
             }
         }
 
