@@ -256,6 +256,33 @@
             color: #000000;
         }
 
+        .vip-perks-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 6px;
+            margin-bottom: 8px;
+        }
+
+        .vip-perk-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 9px 14px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            color: #e4e4e7;
+            letter-spacing: 0.02em;
+        }
+
+        .vip-perk-item i {
+            font-size: 0.95rem;
+            width: 18px;
+            text-align: center;
+        }
+
         .key-panel {
             display: none;
             margin-top: 16px;
@@ -431,12 +458,32 @@
         </div>
 
         <!-- VIP Lifetime Key Purchase Card -->
-        <div class="card" style="border-color: rgba(234, 179, 8, 0.35); background: linear-gradient(135deg, rgba(234, 179, 8, 0.05) 0%, rgba(15, 13, 26, 0.95) 100%);">
+        <div class="card" style="border-color: rgba(234, 179, 8, 0.4); background: linear-gradient(135deg, rgba(234, 179, 8, 0.08) 0%, rgba(15, 13, 26, 0.95) 100%);">
             <div class="card-header">
-                <span class="card-title" style="color: #fde047;"><i class="fa-solid fa-crown"></i> Lifetime Access</span>
-                <span class="card-tag" style="background: rgba(234, 179, 8, 0.15); color: #fde047; border-color: rgba(234, 179, 8, 0.4);">VIP BYPASS</span>
+                <span class="card-title" style="color: #fde047;"><i class="fa-solid fa-crown"></i> Lifetime VIP Key</span>
+                <span class="card-tag" style="background: rgba(234, 179, 8, 0.2); color: #fde047; border-color: rgba(234, 179, 8, 0.5);">PERMANENT</span>
             </div>
-            <a href="https://dsc.gg/ciganyhub" target="_blank" class="btn btn-gold-premium">
+            
+            <div class="vip-perks-list">
+                <div class="vip-perk-item">
+                    <i class="fa-solid fa-ban" style="color:#ef4444;"></i>
+                    <span><strong>No More Ads / Checkpoints</strong> &bull; Skip LootLabs completely</span>
+                </div>
+                <div class="vip-perk-item">
+                    <i class="fa-solid fa-bolt" style="color:#fde047;"></i>
+                    <span><strong>Instant Script Execution</strong> &bull; Paste once, runs forever</span>
+                </div>
+                <div class="vip-perk-item">
+                    <i class="fa-solid fa-infinity" style="color:#38bdf8;"></i>
+                    <span><strong>Permanent 100-Year Access</strong> &bull; Never expires every 8 hours</span>
+                </div>
+                <div class="vip-perk-item">
+                    <i class="fa-brands fa-discord" style="color:#818cf8;"></i>
+                    <span><strong>Exclusive VIP Role & Support</strong> &bull; 24/7 priority help in Discord</span>
+                </div>
+            </div>
+
+            <a href="https://dsc.gg/ciganyhub" target="_blank" class="btn btn-gold-premium" style="margin-top: 14px;">
                 <i class="fa-solid fa-crown"></i> PURCHASE LIFETIME KEY
             </a>
         </div>
