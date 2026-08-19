@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { setGlobalNukeTimestamp, setGlobalNukeTimestamp: setNuke, addRevokedKey } = require('./verify');
 
 const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Fasszoporomangutanok265hitlerfasza99';
@@ -301,16 +302,19 @@ module.exports = async (req, res) => {
     }
 
     // ══════════════════════════════════════════════════════
-    // ACTION: NUKE / DELETE ALL EXISTING KEYS
+    // ACTION: NUKE / DELETE ALL EXISTING KEYS (LootLabs + Admin)
     // ══════════════════════════════════════════════════════
     if (action === 'nuke-all' || action === 'delete-all') {
+      const now = Date.now();
+      setGlobalNukeTimestamp(now);
+
       let count = 0;
       for (const [key, item] of localKeysRegistry.entries()) {
         const hash = hashToken(key);
         localRevokedKeys.set(hash, {
           hash: hash,
           token: key,
-          revokedAt: Date.now(),
+          revokedAt: now,
           reason: 'Master Owner Nuke: All keys revoked'
         });
         count++;
@@ -320,8 +324,9 @@ module.exports = async (req, res) => {
       return res.status(200).json({
         success: true,
         action: 'nuke-all',
+        nukeTimestamp: now,
         count: count,
-        message: `Successfully nuked and revoked all ${count} existing keys!`
+        message: `Successfully nuked and revoked ALL existing keys (including all LootLabs keys)!`
       });
     }
 
