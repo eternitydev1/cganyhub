@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { verifyToken, isRevoked, revokeKey, unrevokeKey, getRevokedList } = require('./verify');
 
-const SECRET = process.env.KEY_SECRET || 'CIGANYHUB_SECURE_SECRET_CHANGE_ME_987654321';
+const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Fasszoporomangutanok265hitlerfasza99';
 
 // In-Memory Key Registry for Admin Dashboard Tracking
