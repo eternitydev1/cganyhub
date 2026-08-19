@@ -1,0 +1,13 @@
+{
+  "name": "stateless-key-system",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "description": "8-Hour Stateless Key System with Anti-Bot protection for Vercel",
+  "main": "api/verify.js",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "keywords": ["key-system", "vercel", "stateless"],
+  "author": "",
+  "license": "MIT"
+}
