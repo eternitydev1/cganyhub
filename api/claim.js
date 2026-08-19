@@ -1,8 +1,10 @@
 const crypto = require('crypto');
+const https = require('https');
 const { registerKeyRecord } = require('./verify');
 
 const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 const EXPIRATION_HOURS = 8;
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || ''; // Paste your webhook URL in Vercel Env Vars or here
 
 function safeRedirect(res, url) {
   try {
@@ -17,6 +19,41 @@ function safeRedirect(res, url) {
       res.end();
     }
   }
+}
+
+// Send Real-Time Notification to Owner Discord
+function notifyDiscord(keyData) {
+  if (!DISCORD_WEBHOOK_URL || !DISCORD_WEBHOOK_URL.startsWith('http')) return;
+  try {
+    const payload = JSON.stringify({
+      embeds: [{
+        title: "🔑 New LootLabs Key Generated",
+        color: 0xff1e27,
+        fields: [
+          { name: "Key Token", value: `\`\`\`${keyData.key}\`\`\``, inline: false },
+          { name: "Duration", value: "8 Hours", inline: true },
+          { name: "Created At", value: `<t:${Math.floor(keyData.createdAt / 1000)}:R>`, inline: true },
+          { name: "Source", value: "LootLabs Checkpoint (2/2)", inline: true }
+        ],
+        footer: { text: "CiganyHub Live Tracking" },
+        timestamp: new Date().toISOString()
+      }]
+    });
+
+    const urlObj = new URL(DISCORD_WEBHOOK_URL);
+    const req = https.request({
+      hostname: urlObj.hostname,
+      path: urlObj.pathname + urlObj.search,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    });
+    req.on('error', () => {});
+    req.write(payload);
+    req.end();
+  } catch (e) {}
 }
 
 module.exports = (req, res) => {
@@ -70,8 +107,7 @@ module.exports = (req, res) => {
 
     const key = `KEY_${keyPayloadB64}.${keySig}`;
 
-    // Auto-register in Dashboard Registry
-    registerKeyRecord(key, {
+    const keyRecord = {
       key: key,
       note: 'LootLabs Checkpoint Key',
       source: 'LootLabs Gateway',
@@ -83,7 +119,10 @@ module.exports = (req, res) => {
       formattedExpires: new Date(expiresAt).toLocaleString(),
       boundHwid: 'Unbound (Auto-locks on first device)',
       revoked: false
-    });
+    };
+
+    registerKeyRecord(key, keyRecord);
+    notifyDiscord(keyRecord);
 
     return safeRedirect(res, `/?claimed=true&key=${encodeURIComponent(key)}&exp=${expiresAt}`);
   } catch (globalErr) {
