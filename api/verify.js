@@ -6,6 +6,7 @@ const EXPIRATION_HOURS = 8;
 // Local Memory Caches
 const localRevokedCache = new Map();
 const localKeysCache = new Map();
+let globalNukeTimestamp = parseInt(process.env.GLOBAL_NUKE_TIMESTAMP || '0', 10);
 
 function hashTokenForBlacklist(token) {
   if (!token) return '';
@@ -39,6 +40,16 @@ function checkIsRevoked(token) {
   return localRevokedCache.get(hash) || null;
 }
 
+function setGlobalNukeTimestamp(ts) {
+  globalNukeTimestamp = ts || Date.now();
+  localKeysCache.clear();
+  return globalNukeTimestamp;
+}
+
+function getGlobalNukeTimestamp() {
+  return globalNukeTimestamp;
+}
+
 function saveKeyRecord(keyRecord) {
   if (!keyRecord || !keyRecord.key) return;
   localKeysCache.set(keyRecord.key, keyRecord);
@@ -60,7 +71,7 @@ function verifyToken(token, clientHwid) {
 
   const tokenHash = hashTokenForBlacklist(cleanToken);
 
-  // 1. Check Revocation Blacklist
+  // 1. Check Specific Key Revocation Blacklist
   if (localRevokedCache.has(tokenHash)) {
     const info = localRevokedCache.get(tokenHash);
     return {
@@ -100,6 +111,16 @@ function verifyToken(token, clientHwid) {
   }
 
   const now = Date.now();
+
+  // 4. Master Global Nuke Check (Invalidates all keys created before the nuke timestamp)
+  if (globalNukeTimestamp > 0 && payload.iat && payload.iat <= globalNukeTimestamp) {
+    return {
+      valid: false,
+      revoked: true,
+      message: 'All keys created prior to the recent master wipe have been invalidated. Please claim a new key.'
+    };
+  }
+
   const isLifetime = payload.isLifetime === true;
   const isExpired = !isLifetime && now > payload.exp;
 
@@ -136,7 +157,7 @@ function verifyToken(token, clientHwid) {
     };
   }
 
-  // 4. HWID Lock Check
+  // 5. HWID Lock Check
   const incomingHwidHash = clientHwid ? hashHwid(clientHwid) : null;
   let boundKey = cleanToken;
 
@@ -207,5 +228,7 @@ module.exports.removeRevokedKey = removeRevokedKey;
 module.exports.checkIsRevoked = checkIsRevoked;
 module.exports.saveKeyRecord = saveKeyRecord;
 module.exports.fetchAllKeyRecords = fetchAllKeyRecords;
+module.exports.setGlobalNukeTimestamp = setGlobalNukeTimestamp;
+module.exports.getGlobalNukeTimestamp = getGlobalNukeTimestamp;
 module.exports.localRevokedCache = localRevokedCache;
 module.exports.localKeysCache = localKeysCache;
