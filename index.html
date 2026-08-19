@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CiganyHUB — Key System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0b10;
+      --bg-card: rgba(18, 20, 29, 0.75);
+      --bg-card-border: rgba(255, 255, 255, 0.08);
+      --accent-primary: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.35);
+      --accent-cyan: #06b6d4;
+      --accent-success: #10b981;
+      --accent-danger: #ef4444;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Ambient Glowing Background Orbs */
+    .glow-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .glow-1 {
+      width: 400px;
+      height: 400px;
+      background: rgba(99, 102, 241, 0.18);
+      top: 5%;
+      left: 10%;
+    }
+    .glow-2 {
+      width: 450px;
+      height: 450px;
+      background: rgba(6, 182, 212, 0.14);
+      bottom: 5%;
+      right: 10%;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 580px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .header-card {
+      text-align: center;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--bg-card-border);
+      border-radius: 20px;
+      padding: 32px 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      margin-bottom: 12px;
+    }
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      background: #818cf8;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #818cf8;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--bg-card-border);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      color: #fff;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(99, 102, 241, 0.5);
+    }
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      border: 1px solid var(--bg-card-border);
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-discord {
+      background: #5865F2;
+      color: white;
+    }
+    .btn-discord:hover {
+      background: #4752C4;
+    }
+
+    /* Key Box & Expiration Timer */
+    .key-display {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--bg-card-border);
+      border-radius: 14px;
+      padding: 16px;
+      margin-top: 16px;
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .key-text-box {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #38bdf8;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px dashed rgba(56, 189, 248, 0.3);
+      word-break: break-all;
+      margin-bottom: 12px;
+      user-select: all;
+    }
+
+    .timer-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .timer-unit {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .timer-number {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 20px;
+      font-weight: 700;
+      color: #a5b4fc;
+    }
+    .timer-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    /* Input & Checker */
+    .input-field {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--bg-card-border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 12px;
+    }
+    .input-field:focus {
+      border-color: var(--accent-primary);
+    }
+
+    .status-msg {
+      font-size: 13px;
+      margin-top: 10px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      display: none;
+    }
+    .status-success {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+    .status-error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="glow-orb glow-1"></div>
+  <div class="glow-orb glow-2"></div>
+
+  <div class="container">
+    <!-- Header -->
+    <div class="header-card">
+      <div class="badge">
+        <div class="badge-dot"></div>
+        <span>8-HOUR DYNAMIC KEY SYSTEM</span>
+      </div>
+      <h1>CiganyHUB Access</h1>
+      <p class="subtitle">Generate a temporary session key to execute scripts in-game. Each key remains active for exactly 8 hours.</p>
+    </div>
+
+    <!-- Key Generator Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>⚡</span> Generate New Key
+      </div>
+      <div class="btn-group">
+        <button id="genBtn" class="btn btn-primary" onclick="generateKey()">
+          Generate 8-Hour Key
+        </button>
+      </div>
+
+      <!-- Active Key Box -->
+      <div id="keyBox" class="key-display">
+        <div class="timer-container">
+          <div class="timer-unit">
+            <div id="hours" class="timer-number">08</div>
+            <div class="timer-label">Hours</div>
+          </div>
+          <div class="timer-unit">
+            <div id="minutes" class="timer-number">00</div>
+            <div class="timer-label">Mins</div>
+          </div>
+          <div class="timer-unit">
+            <div id="seconds" class="timer-number">00</div>
+            <div class="timer-label">Secs</div>
+          </div>
+        </div>
+
+        <div id="keyText" class="key-text-box">...</div>
+
+        <button id="copyBtn" class="btn btn-secondary" onclick="copyKey()">
+          📋 Copy Key to Clipboard
+        </button>
+      </div>
+    </div>
+
+    <!-- Verify / Check Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>🔍</span> Check Key Expiration
+      </div>
+      <input type="text" id="checkInput" class="input-field" placeholder="Paste your key here (KEY_...)" />
+      <button class="btn btn-secondary" onclick="verifyKeyInput()">Verify & Check Expiry</button>
+      <div id="checkStatus" class="status-msg"></div>
+    </div>
+
+    <!-- Community Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>💬</span> Community & Support
+      </div>
+      <div class="btn-group">
+        <a href="https://discord.gg/yourserver" target="_blank" class="btn btn-discord">
+          Join Official Discord Server
+        </a>
+      </div>
+    </div>
+
+    <div class="footer">
+      Powered by CiganyHUB Key Gateway &bull; Auto-expiring tokens
+    </div>
+  </div>
+
+  <script>
+    let countdownInterval = null;
+    let currentKey = "";
+
+    async function generateKey() {
+      const genBtn = document.getElementById('genBtn');
+      genBtn.disabled = true;
+      genBtn.innerText = "Generating key...";
+
+      try {
+        const res = await fetch('/api/generate', { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success) {
+          currentKey = data.key;
+          document.getElementById('keyText').innerText = data.key;
+          document.getElementById('keyBox').style.display = 'block';
+          startCountdown(data.expiresAt);
+        } else {
+          alert("Error: " + data.message);
+        }
+      } catch (e) {
+        alert("Failed to contact key server: " + e.message);
+      } finally {
+        genBtn.disabled = false;
+        genBtn.innerText = "Generate New 8-Hour Key";
+      }
+    }
+
+    function startCountdown(expiresAt) {
+      if (countdownInterval) clearInterval(countdownInterval);
+
+      function update() {
+        const now = Date.now();
+        const diff = expiresAt - now;
+
+        if (diff <= 0) {
+          clearInterval(countdownInterval);
+          document.getElementById('hours').innerText = "00";
+          document.getElementById('minutes').innerText = "00";
+          document.getElementById('seconds').innerText = "00";
+          document.getElementById('keyText').innerText = "KEY EXPIRED - PLEASE GENERATE A NEW ONE";
+          return;
+        }
+
+        const totalSec = Math.floor(diff / 1000);
+        const h = Math.floor(totalSec / 3600);
+        const m = Math.floor((totalSec % 3600) / 60);
+        const s = totalSec % 60;
+
+        document.getElementById('hours').innerText = String(h).padStart(2, '0');
+        document.getElementById('minutes').innerText = String(m).padStart(2, '0');
+        document.getElementById('seconds').innerText = String(s).padStart(2, '0');
+      }
+
+      update();
+      countdownInterval = setInterval(update, 1000);
+    }
+
+    function copyKey() {
+      if (!currentKey) return;
+      navigator.clipboard.writeText(currentKey).then(() => {
+        const copyBtn = document.getElementById('copyBtn');
+        copyBtn.innerText = "✅ Copied to Clipboard!";
+        setTimeout(() => {
+          copyBtn.innerText = "📋 Copy Key to Clipboard";
+        }, 2000);
+      });
+    }
+
+    async function verifyKeyInput() {
+      const input = document.getElementById('checkInput').value.trim();
+      const status = document.getElementById('checkStatus');
+
+      if (!input) {
+        status.className = "status-msg status-error";
+        status.innerText = "Please enter a key to verify.";
+        status.style.display = "block";
+        return;
+      }
+
+      status.className = "status-msg";
+      status.innerText = "Checking key...";
+      status.style.display = "block";
+
+      try {
+        const res = await fetch(`/api/verify?key=${encodeURIComponent(input)}`);
+        const data = await res.json();
+
+        if (res.ok && data.valid) {
+          status.className = "status-msg status-success";
+          status.innerText = `✅ Key is VALID! Time remaining: ${data.formattedRemaining}`;
+        } else {
+          status.className = "status-msg status-error";
+          status.innerText = `❌ ${data.message || 'Invalid key.'}`;
+        }
+      } catch (e) {
+        status.className = "status-msg status-error";
+        status.innerText = `❌ Verification error: ${e.message}`;
+      }
+    }
+  </script>
+</body>
+</html>
