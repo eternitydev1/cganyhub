@@ -5,6 +5,7 @@ const EXPIRATION_HOURS = 8;
 
 module.exports = (req, res) => {
   const session = req.query.session;
+  const step = parseInt(req.query.step || '1', 10);
   
   if (!session) {
     return res.redirect('/?error=missing_session');
@@ -18,13 +19,17 @@ module.exports = (req, res) => {
   const [payloadB64, providedSig] = parts;
   const hmac = crypto.createHmac('sha256', SECRET);
   hmac.update(payloadB64);
-  const expectedSig = hmac.digest('base64url');
+  const signature = hmac.digest('base64url');
 
   const providedBuf = Buffer.from(providedSig);
   const expectedBuf = Buffer.from(expectedSig);
 
   if (providedBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(providedBuf, expectedBuf)) {
     return res.redirect('/?error=tampered_session');
+  }
+
+  if (step === 1) {
+    return res.redirect('/?step=2');
   }
 
   const now = Date.now();
