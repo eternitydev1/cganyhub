@@ -42,15 +42,13 @@
 
         .container {
             width: 100%;
-            max-width: 960px;
+            max-width: 980px;
             display: flex;
             flex-direction: column;
             gap: 20px;
         }
 
-        .header {
-            text-align: center;
-        }
+        .header { text-align: center; }
 
         .badge {
             display: inline-flex;
@@ -83,7 +81,7 @@
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 12px;
         }
 
@@ -97,14 +95,15 @@
 
         .stat-val {
             font-family: 'Orbitron', sans-serif;
-            font-size: 1.8rem;
+            font-size: 1.6rem;
             font-weight: 900;
             color: var(--text-main);
         }
 
         .stat-val.active-count { color: var(--success-green); }
+        .stat-val.expired-count { color: var(--text-sub); }
         .stat-val.revoked-count { color: var(--danger-red); }
-        .stat-lbl { font-size: 0.75rem; color: var(--text-sub); text-transform: uppercase; margin-top: 4px; font-weight: 600; }
+        .stat-lbl { font-size: 0.72rem; color: var(--text-sub); text-transform: uppercase; margin-top: 4px; font-weight: 600; }
 
         .card {
             background: var(--card-bg);
@@ -122,6 +121,8 @@
             margin-bottom: 16px;
             padding-bottom: 12px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .card-title {
@@ -144,13 +145,13 @@
         }
 
         .btn {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            padding: 12px 18px;
+            padding: 11px 16px;
             border-radius: 8px;
-            font-size: 0.88rem;
+            font-size: 0.85rem;
             font-weight: 700;
             letter-spacing: 0.05em;
             cursor: pointer;
@@ -163,9 +164,21 @@
             background: linear-gradient(135deg, #ff1e27 0%, #b91c1c 100%);
             color: white;
             box-shadow: 0 4px 18px rgba(255, 30, 39, 0.35);
+            width: 100%;
         }
 
         .btn-red:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.35);
+        }
+
+        .btn-danger:hover {
+            background: #ef4444;
+            color: white;
+        }
 
         .btn-gold {
             background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
@@ -271,9 +284,7 @@
             color: var(--text-main);
         }
 
-        tr:hover td {
-            background: rgba(255, 255, 255, 0.02);
-        }
+        tr:hover td { background: rgba(255, 255, 255, 0.02); }
 
         .key-badge {
             display: inline-block;
@@ -284,10 +295,19 @@
             background: rgba(0, 0, 0, 0.6);
             border: 1px solid rgba(255, 255, 255, 0.1);
             color: #7dd3fc;
-            max-width: 180px;
+            max-width: 170px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+
+        .source-tag {
+            font-size: 0.68rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #cbd5e1;
+            margin-left: 4px;
         }
 
         .status-tag {
@@ -347,7 +367,7 @@
         <div class="header">
             <div class="badge"><i class="fa-solid fa-crown"></i> OWNER CONSOLE</div>
             <h1 class="title">CIGANY<span>DASHBOARD</span></h1>
-            <p class="subtitle">Mint custom-duration keys and monitor active access tokens.</p>
+            <p class="subtitle">Mint custom-duration keys and monitor all active & LootLabs tokens.</p>
         </div>
 
         <!-- 1. Authentication -->
@@ -363,11 +383,15 @@
         <div class="stats-grid">
             <div class="stat-card">
                 <div id="statTotal" class="stat-val">0</div>
-                <div class="stat-lbl">Total Minted</div>
+                <div class="stat-lbl">Total Keys</div>
             </div>
             <div class="stat-card">
                 <div id="statActive" class="stat-val active-count">0</div>
                 <div class="stat-lbl">Active Keys</div>
+            </div>
+            <div class="stat-card">
+                <div id="statExpired" class="stat-val expired-count">0</div>
+                <div class="stat-lbl">Expired Keys</div>
             </div>
             <div class="stat-card">
                 <div id="statRevoked" class="stat-val revoked-count">0</div>
@@ -417,13 +441,33 @@
             <div id="genResult" class="result-box"></div>
         </div>
 
-        <!-- 4. Keys Dashboard Table -->
+        <!-- 4. Import Past Key Tool -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title"><i class="fa-solid fa-file-import"></i> Import Past LootLabs Key</span>
+                <span class="card-tag">MANUAL IMPORT</span>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="importKeyInput" class="input-text" placeholder="Paste KEY_... from earlier LootLabs session to track it in dashboard" style="margin-bottom:0;" />
+                <button class="btn btn-secondary" style="white-space:nowrap;" onclick="importPastKey()">
+                    <i class="fa-solid fa-plus"></i> IMPORT
+                </button>
+            </div>
+            <div id="importResult" class="result-box"></div>
+        </div>
+
+        <!-- 5. Keys Dashboard Table -->
         <div class="card">
             <div class="card-header">
                 <span class="card-title"><i class="fa-solid fa-table-list"></i> Key Management Dashboard</span>
-                <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="loadDashboard()">
-                    <i class="fa-solid fa-rotate"></i> REFRESH
-                </button>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-danger" style="font-size:0.75rem; padding:6px 12px;" onclick="deleteAllExpiredKeys()">
+                        <i class="fa-solid fa-trash-can"></i> DELETE ALL EXPIRED & REVOKED
+                    </button>
+                    <button class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px;" onclick="loadDashboard()">
+                        <i class="fa-solid fa-rotate"></i> REFRESH
+                    </button>
+                </div>
             </div>
 
             <div class="table-wrap">
@@ -434,7 +478,7 @@
                             <th>Duration</th>
                             <th>Created At</th>
                             <th>Expires At</th>
-                            <th>Note / Tag</th>
+                            <th>Source / Note</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -569,6 +613,46 @@
             }
         }
 
+        async function importPastKey() {
+            const password = document.getElementById('adminPassword').value.trim();
+            const keyStr = document.getElementById('importKeyInput').value.trim();
+            const resultBox = document.getElementById('importResult');
+
+            if (!password) {
+                resultBox.className = 'result-box error';
+                resultBox.innerText = 'Please enter Admin Password above.';
+                return;
+            }
+            if (!keyStr) {
+                resultBox.className = 'result-box error';
+                resultBox.innerText = 'Please paste a key to import.';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: password, action: 'import-key', key: keyStr })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    resultBox.className = 'result-box success';
+                    resultBox.innerText = 'Key successfully verified and imported into Dashboard!';
+                    document.getElementById('importKeyInput').value = '';
+                    loadDashboard();
+                } else {
+                    resultBox.className = 'result-box error';
+                    resultBox.innerText = data.message || 'Failed to import key.';
+                }
+            } catch(e) {
+                resultBox.className = 'result-box error';
+                resultBox.innerText = 'Error: ' + e.message;
+            }
+        }
+
         async function loadDashboard() {
             const password = document.getElementById('adminPassword').value.trim();
             const tbody = document.getElementById('keysTableBody');
@@ -612,12 +696,14 @@
         function renderTable(keys) {
             const tbody = document.getElementById('keysTableBody');
             let activeCount = 0;
+            let expiredCount = 0;
             let revokedCount = 0;
 
             if (keys.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No keys generated yet. Use the generator above to mint your first key!</td></tr>';
                 document.getElementById('statTotal').innerText = '0';
                 document.getElementById('statActive').innerText = '0';
+                document.getElementById('statExpired').innerText = '0';
                 document.getElementById('statRevoked').innerText = '0';
                 return;
             }
@@ -625,10 +711,12 @@
             let html = '';
             for (const item of keys) {
                 if (item.status === 'active') activeCount++;
+                if (item.status === 'expired') expiredCount++;
                 if (item.status === 'revoked') revokedCount++;
 
                 const statusClass = item.status;
                 const statusLabel = item.status.toUpperCase();
+                const sourceBadge = item.source ? `<span class="source-tag">${item.source}</span>` : '';
 
                 html += `
                     <tr>
@@ -636,7 +724,7 @@
                         <td><strong>${item.durationLabel || '8 Hours'}</strong></td>
                         <td>${item.formattedCreated || new Date(item.createdAt).toLocaleString()}</td>
                         <td>${item.formattedExpires || (item.isLifetime ? 'Lifetime' : new Date(item.expiresAt).toLocaleString())}</td>
-                        <td>${item.note || 'None'}</td>
+                        <td>${item.note || 'None'} ${sourceBadge}</td>
                         <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
                         <td>
                             <button class="btn-table-action btn-copy" onclick="copyKeyText('${item.key}')" title="Copy Key"><i class="fa-solid fa-copy"></i></button>
@@ -652,6 +740,7 @@
             tbody.innerHTML = html;
             document.getElementById('statTotal').innerText = keys.length;
             document.getElementById('statActive').innerText = activeCount;
+            document.getElementById('statExpired').innerText = expiredCount;
             document.getElementById('statRevoked').innerText = revokedCount;
         }
 
@@ -661,9 +750,39 @@
             });
         }
 
+        async function deleteAllExpiredKeys() {
+            const password = document.getElementById('adminPassword').value.trim();
+            if (!confirm('Are you sure you want to delete all expired and revoked keys? Active keys will NOT be deleted.')) return;
+
+            try {
+                const res = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: password, action: 'clear-inactive' })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    // Clean local storage
+                    const stored = getStoredKeys();
+                    const now = Date.now();
+                    const remaining = stored.filter(item => !item.revoked && (item.isLifetime || now <= item.expiresAt));
+                    saveStoredKeys(remaining);
+
+                    alert(data.message || 'Expired and revoked keys cleared!');
+                    loadDashboard();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch(e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
         async function revokeKeyAction(key) {
             const password = document.getElementById('adminPassword').value.trim();
-            if (!confirm('Are you sure you want to revoke and delete this key? It will immediately stop working.')) return;
+            if (!confirm('Are you sure you want to revoke and delete this key? It will immediately stop working in Roblox.')) return;
 
             try {
                 const res = await fetch('/api/admin', {
@@ -673,7 +792,6 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    // Update local storage
                     const stored = getStoredKeys();
                     for (const item of stored) {
                         if (item.key === key) item.revoked = true;
