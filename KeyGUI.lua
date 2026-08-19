@@ -92,8 +92,9 @@ local function detectHttpSpy()
     return false
 end
 
-local function performHttpRequest(url, headers)
-    headers = headers or {}
+local function performHttpRequest(url, method, customHeaders, bodyData)
+    method = method or "GET"
+    local headers = customHeaders or {}
     headers["X-HWID"] = MY_HWID
     headers["X-Timestamp"] = tostring(os.time())
     headers["X-Client-Ver"] = "1.1"
@@ -104,16 +105,16 @@ local function performHttpRequest(url, headers)
 
     if raw_request then
         local ok, res = pcall(function()
-            return raw_request({Url = url, Method = "GET", Headers = headers})
+            return raw_request({Url = url, Method = method, Headers = headers, Body = bodyData})
         end)
         if ok and res then
             return res.Body or res.body, res.StatusCode or res.status_code or 200
         end
     end
 
-    if raw_http_get then
-        local success, body = pcall(function() return raw_http_get(game, url) end)
-        return body, success and 200 or 400
+    if raw_http_get and method == "GET" then
+        local success, resBody = pcall(function() return raw_http_get(game, url) end)
+        return resBody, success and 200 or 400
     end
 
     return nil, 500
@@ -713,8 +714,23 @@ local function DoVerify(rawKey, isAutoCheck)
     end
 
     task.spawn(function()
-        local url = VERCEL_DOMAIN .. "/api/get-script?key=" .. HttpService:UrlEncode(key) .. "&hwid=" .. HttpService:UrlEncode(MY_HWID)
-        local body, status = performHttpRequest(url)
+        local url = VERCEL_DOMAIN .. "/api/get-script"
+        local postBody = HttpService:JSONEncode({
+            key = key,
+            hwid = MY_HWID
+        })
+        local headers = {
+            ["Content-Type"] = "application/json",
+            ["X-Hub-Key"] = key,
+            ["X-HWID"] = MY_HWID
+        }
+        local body, status = performHttpRequest(url, "POST", headers, postBody)
+
+        -- Fallback to GET with query params if executor does not support POST requests
+        if status ~= 200 or not body or string.find(body, "500") then
+            local fallbackUrl = VERCEL_DOMAIN .. "/api/get-script?key=" .. HttpService:UrlEncode(key) .. "&hwid=" .. HttpService:UrlEncode(MY_HWID)
+            body, status = performHttpRequest(fallbackUrl, "GET", headers, nil)
+        end
 
         if status == 200 and body and not string.find(body, "403 Forbidden") and not string.find(body, "401 Unauthorized") then
             fsSave(key)
