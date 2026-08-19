@@ -1,65 +1,15 @@
 const crypto = require('crypto');
+const { isKeyBlacklisted, getNukeTimestamp, blacklistKey, unblacklistKey, saveKey, getAllKeys, hashToken } = require('./storage');
 
 const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 const EXPIRATION_HOURS = 8;
-
-// Local Memory Caches
-const localRevokedCache = new Map();
-const localKeysCache = new Map();
-let globalNukeTimestamp = parseInt(process.env.GLOBAL_NUKE_TIMESTAMP || '0', 10);
-
-function hashTokenForBlacklist(token) {
-  if (!token) return '';
-  return crypto.createHash('sha256').update(String(token).trim()).digest('hex');
-}
 
 function hashHwid(rawHwid) {
   if (!rawHwid) return 'unspecified';
   return crypto.createHash('sha256').update(String(rawHwid).trim()).digest('hex').substring(0, 16);
 }
 
-function addRevokedKey(token, reason) {
-  const hash = hashTokenForBlacklist(token);
-  const rec = {
-    hash: hash,
-    token: token,
-    revokedAt: Date.now(),
-    reason: reason || 'Revoked by owner'
-  };
-  localRevokedCache.set(hash, rec);
-  return rec;
-}
-
-function removeRevokedKey(token) {
-  const hash = hashTokenForBlacklist(token);
-  localRevokedCache.delete(hash);
-}
-
-function checkIsRevoked(token) {
-  const hash = hashTokenForBlacklist(token);
-  return localRevokedCache.get(hash) || null;
-}
-
-function setGlobalNukeTimestamp(ts) {
-  globalNukeTimestamp = ts || Date.now();
-  localKeysCache.clear();
-  return globalNukeTimestamp;
-}
-
-function getGlobalNukeTimestamp() {
-  return globalNukeTimestamp;
-}
-
-function saveKeyRecord(keyRecord) {
-  if (!keyRecord || !keyRecord.key) return;
-  localKeysCache.set(keyRecord.key, keyRecord);
-}
-
-function fetchAllKeyRecords() {
-  return Array.from(localKeysCache.values());
-}
-
-function verifyToken(token, clientHwid) {
+async function verifyToken(token, clientHwid) {
   if (!token || typeof token !== 'string') {
     return { valid: false, message: 'Missing or empty key.' };
   }
@@ -69,15 +19,13 @@ function verifyToken(token, clientHwid) {
     return { valid: false, message: 'Invalid key format.' };
   }
 
-  const tokenHash = hashTokenForBlacklist(cleanToken);
-
-  // 1. Check Specific Key Revocation Blacklist
-  if (localRevokedCache.has(tokenHash)) {
-    const info = localRevokedCache.get(tokenHash);
+  // 1. Check Cloud & Local Blacklist
+  const revokedInfo = await isKeyBlacklisted(cleanToken);
+  if (revokedInfo) {
     return {
       valid: false,
       revoked: true,
-      message: `This key has been deleted/revoked by the administrator (${info ? info.reason : 'Revoked'}).`
+      message: `This key has been deleted/revoked by the administrator (${revokedInfo.reason || 'Revoked'}).`
     };
   }
 
@@ -112,8 +60,9 @@ function verifyToken(token, clientHwid) {
 
   const now = Date.now();
 
-  // 4. Master Global Nuke Check (Invalidates all keys created before the nuke timestamp)
-  if (globalNukeTimestamp > 0 && payload.iat && payload.iat <= globalNukeTimestamp) {
+  // 4. Master Global Nuke Check
+  const nukeTimestamp = await getNukeTimestamp();
+  if (nukeTimestamp > 0 && payload.iat && payload.iat <= nukeTimestamp) {
     return {
       valid: false,
       revoked: true,
@@ -123,29 +72,6 @@ function verifyToken(token, clientHwid) {
 
   const isLifetime = payload.isLifetime === true;
   const isExpired = !isLifetime && now > payload.exp;
-
-  // Auto-register key into local registry
-  if (!localKeysCache.has(cleanToken)) {
-    let dur = payload.durationLabel || '8 Hours';
-    if (!payload.durationLabel && payload.exp && payload.iat) {
-      const h = Math.round((payload.exp - payload.iat) / (3600 * 1000));
-      dur = `${h} Hours`;
-    }
-    const rec = {
-      key: cleanToken,
-      note: payload.note || 'LootLabs Checkpoint Key',
-      source: payload.adminGen ? 'Admin Minted' : 'LootLabs Gateway',
-      isLifetime: isLifetime,
-      durationLabel: isLifetime ? 'Lifetime' : dur,
-      createdAt: payload.iat || now,
-      formattedCreated: new Date(payload.iat || now).toLocaleString(),
-      expiresAt: payload.exp,
-      formattedExpires: isLifetime ? 'Never (Lifetime)' : new Date(payload.exp).toLocaleString(),
-      boundHwid: payload.hwid ? payload.hwid : 'Unbound (Auto-locks on first device)',
-      revoked: false
-    };
-    localKeysCache.set(cleanToken, rec);
-  }
 
   if (isExpired) {
     const expiredAgoSec = Math.floor((now - payload.exp) / 1000);
@@ -201,7 +127,7 @@ function verifyToken(token, clientHwid) {
   };
 }
 
-module.exports = (req, res) => {
+module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, User-Agent, X-Hub-Key, X-HWID');
@@ -213,7 +139,7 @@ module.exports = (req, res) => {
   const key = req.query.key || (req.body && req.body.key) || req.headers['x-hub-key'];
   const hwid = req.query.hwid || (req.body && req.body.hwid) || req.headers['x-hwid'];
 
-  const result = verifyToken(key, hwid);
+  const result = await verifyToken(key, hwid);
 
   if (!result.valid) {
     return res.status(result.expired ? 410 : (result.revoked ? 403 : 400)).json(result);
@@ -223,12 +149,4 @@ module.exports = (req, res) => {
 };
 
 module.exports.verifyToken = verifyToken;
-module.exports.addRevokedKey = addRevokedKey;
-module.exports.removeRevokedKey = removeRevokedKey;
-module.exports.checkIsRevoked = checkIsRevoked;
-module.exports.saveKeyRecord = saveKeyRecord;
-module.exports.fetchAllKeyRecords = fetchAllKeyRecords;
-module.exports.setGlobalNukeTimestamp = setGlobalNukeTimestamp;
-module.exports.getGlobalNukeTimestamp = getGlobalNukeTimestamp;
-module.exports.localRevokedCache = localRevokedCache;
-module.exports.localKeysCache = localKeysCache;
+module.exports.hashHwid = hashHwid;
