@@ -1,159 +1,310 @@
 const crypto = require('crypto');
-const https = require('https');
 
 const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
-const EXPIRATION_HOURS = 8;
-const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || 'https://discord.com/api/webhooks/1526481123973136387/M0MW-HHESq7oC0EokriBr-Dei5yY50wYgtsAC_iM_8oH08MWteyezuDhg8WwzxmwUmZp';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Fasszoporomangutanok265hitlerfasza99';
 
-// Vercel KV / Upstash Redis Integration
-const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '';
-const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '';
+// In-Memory Key Registry & Revocation List for Admin Dashboard
+const localKeysRegistry = new Map();
+const localRevokedKeys = new Map();
 
-function safeRedirect(res, url) {
+function hashToken(token) {
+  if (!token) return '';
+  return crypto.createHash('sha256').update(String(token).trim()).digest('hex');
+}
+
+function hashHwid(rawHwid) {
+  if (!rawHwid) return null;
+  return crypto.createHash('sha256').update(String(rawHwid).trim()).digest('hex').substring(0, 16);
+}
+
+function decodeKeyInfo(token) {
   try {
-    res.setHeader('Location', url);
-    res.statusCode = 302;
-    res.end();
-  } catch (err) {
-    try {
-      res.writeHead(302, { Location: url });
-      res.end();
-    } catch(e) {}
+    if (!token || !token.startsWith('KEY_')) return null;
+    const parts = token.slice(4).split('.');
+    if (parts.length !== 2) return null;
+    const jsonStr = Buffer.from(parts[0], 'base64url').toString('utf8');
+    const payload = JSON.parse(jsonStr);
+
+    const now = Date.now();
+    const isLifetime = payload.isLifetime === true;
+    const expired = !isLifetime && now > payload.exp;
+    const revoked = localRevokedKeys.has(hashToken(token));
+
+    let status = 'active';
+    if (revoked) status = 'revoked';
+    else if (expired) status = 'expired';
+
+    let dur = payload.durationLabel || '8 Hours';
+    if (!payload.durationLabel && payload.exp && payload.iat) {
+      const h = Math.round((payload.exp - payload.iat) / (3600 * 1000));
+      dur = `${h} Hours`;
+    }
+
+    return {
+      key: token,
+      note: payload.note || (payload.adminGen ? 'Owner Minted' : 'LootLabs Key'),
+      source: payload.adminGen ? 'Admin Minted' : 'LootLabs Gateway',
+      isLifetime: isLifetime,
+      durationLabel: isLifetime ? 'Lifetime' : dur,
+      createdAt: payload.iat || now,
+      formattedCreated: new Date(payload.iat || now).toLocaleString(),
+      expiresAt: payload.exp,
+      formattedExpires: isLifetime ? 'Never (Lifetime)' : new Date(payload.exp).toLocaleString(),
+      boundHwid: payload.hwid ? payload.hwid : 'Unbound (Auto-locks on first device)',
+      revoked: revoked,
+      expired: expired,
+      status: status
+    };
+  } catch (e) {
+    return null;
   }
 }
 
-// Send Real-Time Notification to Owner Discord
-function notifyDiscord(keyData) {
-  if (!DISCORD_WEBHOOK_URL || !DISCORD_WEBHOOK_URL.startsWith('http')) return;
-  try {
-    const payload = JSON.stringify({
-      embeds: [{
-        title: "🔑 New LootLabs Key Generated",
-        color: 0xff1e27,
-        fields: [
-          { name: "Key Token", value: `\`\`\`${keyData.key}\`\`\``, inline: false },
-          { name: "Duration", value: "8 Hours", inline: true },
-          { name: "Created At", value: `<t:${Math.floor(keyData.createdAt / 1000)}:R>`, inline: true },
-          { name: "Source", value: "LootLabs Checkpoint (2/2)", inline: true }
-        ],
-        footer: { text: "CiganyHub Live Tracking" },
-        timestamp: new Date().toISOString()
-      }]
-    });
-
-    const urlObj = new URL(DISCORD_WEBHOOK_URL);
-    const req = https.request({
-      hostname: urlObj.hostname,
-      path: urlObj.pathname + urlObj.search,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(payload)
-      }
-    });
-    req.on('error', () => {});
-    req.write(payload);
-    req.end();
-  } catch (e) {}
-}
-
-// Save Key Record to Vercel KV / Upstash Redis
-async function saveKeyToCloud(keyRecord) {
-  if (!KV_URL || !KV_TOKEN) return;
-  try {
-    const hash = crypto.createHash('sha256').update(String(keyRecord.key).trim()).digest('hex').substring(0, 16);
-    const u = new URL(`${KV_URL}/set/key_${hash}`);
-    const data = JSON.stringify(keyRecord);
-    const req = https.request({
-      hostname: u.hostname,
-      path: u.pathname,
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${KV_TOKEN}`,
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(data)
-      }
-    });
-    req.on('error', () => {});
-    req.write(data);
-    req.end();
-  } catch (e) {}
-}
-
 module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Password');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   try {
-    const session = req.query.session || '';
-    const step = parseInt(req.query.step || '1', 10);
-    
-    if (!session) {
-      return safeRedirect(res, '/?error=missing_session');
+    // 1. Authenticate Owner
+    const headers = req.headers || {};
+    const providedPassword = (
+      headers['x-admin-password'] ||
+      (req.query && req.query.password) ||
+      (req.body && req.body.password) ||
+      ''
+    ).trim();
+
+    if (!providedPassword || providedPassword !== ADMIN_PASSWORD) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: Invalid or missing admin password.'
+      });
     }
 
-    const parts = session.split('.');
-    if (parts.length !== 2) {
-      return safeRedirect(res, '/?error=invalid_session');
+    const action = (req.query && req.query.action) || (req.body && req.body.action) || 'list-keys';
+
+    // ══════════════════════════════════════════════════════
+    // ACTION: GENERATE CUSTOM KEYS (Any Hours / Days / Lifetime)
+    // ══════════════════════════════════════════════════════
+    if (action === 'generate') {
+      let customValue = parseFloat((req.query && req.query.customValue) || (req.body && req.body.customValue) || 0);
+      const customUnit = ((req.query && req.query.customUnit) || (req.body && req.body.customUnit) || 'hours').toLowerCase();
+      let hours = parseFloat((req.query && req.query.hours) || (req.body && req.body.hours) || 0);
+      const isLifetime = (req.query && req.query.lifetime === 'true') || (req.body && req.body.lifetime === true);
+      const targetHwid = (req.query && req.query.hwid) || (req.body && req.body.hwid) || null;
+      const note = (req.query && req.query.note) || (req.body && req.body.note) || 'Owner Generated Key';
+
+      if (customValue > 0) {
+        if (customUnit === 'minutes') hours = customValue / 60;
+        else if (customUnit === 'hours') hours = customValue;
+        else if (customUnit === 'days') hours = customValue * 24;
+        else if (customUnit === 'months') hours = customValue * 24 * 30;
+        else if (customUnit === 'years') hours = customValue * 24 * 365;
+      }
+
+      if (!isLifetime && (!hours || hours <= 0)) {
+        hours = 8;
+      }
+
+      const now = Date.now();
+      let expiresAt = null;
+      let durationLabel = `${hours} Hours`;
+
+      if (isLifetime) {
+        expiresAt = now + (100 * 365 * 24 * 60 * 60 * 1000);
+        durationLabel = 'Lifetime (100 Years)';
+      } else {
+        expiresAt = now + Math.floor(hours * 60 * 60 * 1000);
+        if (hours >= 8760) durationLabel = `${(hours / 8760).toFixed(1)} Year(s)`;
+        else if (hours >= 720) durationLabel = `${(hours / 720).toFixed(1)} Month(s)`;
+        else if (hours >= 24) durationLabel = `${(hours / 24).toFixed(1)} Day(s)`;
+        else durationLabel = `${hours} Hour(s)`;
+      }
+
+      const keyPayload = {
+        v: 1,
+        iat: now,
+        exp: expiresAt,
+        isLifetime: isLifetime,
+        adminGen: true,
+        note: note,
+        durationLabel: durationLabel,
+        nonce: crypto.randomBytes(6).toString('hex')
+      };
+
+      if (targetHwid) {
+        keyPayload.hwid = hashHwid(targetHwid);
+      }
+
+      const keyPayloadB64 = Buffer.from(JSON.stringify(keyPayload)).toString('base64url');
+      const keyHmac = crypto.createHmac('sha256', SECRET);
+      keyHmac.update(keyPayloadB64);
+      const keySig = keyHmac.digest('base64url');
+
+      const generatedKey = `KEY_${keyPayloadB64}.${keySig}`;
+
+      const keyRecord = {
+        key: generatedKey,
+        note: note,
+        source: 'Admin Minted',
+        isLifetime: isLifetime,
+        durationLabel: durationLabel,
+        createdAt: now,
+        formattedCreated: new Date(now).toLocaleString(),
+        expiresAt: expiresAt,
+        formattedExpires: isLifetime ? 'Never (Lifetime)' : new Date(expiresAt).toLocaleString(),
+        boundHwid: targetHwid ? targetHwid : 'Unbound (Auto-locks on first device)',
+        revoked: false,
+        expired: false,
+        status: 'active'
+      };
+
+      localKeysRegistry.set(generatedKey, keyRecord);
+
+      return res.status(200).json({
+        success: true,
+        action: 'generate',
+        record: keyRecord,
+        key: generatedKey
+      });
     }
 
-    const [payloadB64, providedSig] = parts;
-    const hmac = crypto.createHmac('sha256', SECRET);
-    hmac.update(payloadB64);
-    const expectedSig = hmac.digest('base64url');
+    // ══════════════════════════════════════════════════════
+    // ACTION: LIST ALL KEYS (Admin + LootLabs Keys)
+    // ══════════════════════════════════════════════════════
+    if (action === 'list-keys' || action === 'dashboard') {
+      const allKeys = Array.from(localKeysRegistry.values());
+      const now = Date.now();
 
-    const providedBuf = Buffer.from(providedSig);
-    const expectedBuf = Buffer.from(expectedSig);
+      for (const item of allKeys) {
+        const revoked = localRevokedKeys.has(hashToken(item.key));
+        const expired = !item.isLifetime && now > item.expiresAt;
+        let status = 'active';
+        if (revoked) status = 'revoked';
+        else if (expired) status = 'expired';
 
-    if (providedBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(providedBuf, expectedBuf)) {
-      return safeRedirect(res, '/?error=tampered_session');
+        item.revoked = revoked;
+        item.expired = expired;
+        item.status = status;
+      }
+
+      allKeys.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+      return res.status(200).json({
+        success: true,
+        action: 'list-keys',
+        total: allKeys.length,
+        keys: allKeys
+      });
     }
 
-    // Step 1 completed -> Redirect to Step 2 (Checkpoint 2 of 2)
-    if (step === 1) {
-      return safeRedirect(res, '/?step=2');
+    // ══════════════════════════════════════════════════════
+    // ACTION: SYNC CLIENT SAVED KEYS
+    // ══════════════════════════════════════════════════════
+    if (action === 'sync-keys') {
+      const clientKeys = (req.body && req.body.keys) || [];
+      for (const item of clientKeys) {
+        if (item && item.key && !localKeysRegistry.has(item.key)) {
+          localKeysRegistry.set(item.key, item);
+        }
+      }
+      return res.status(200).json({ success: true, count: localKeysRegistry.size });
     }
 
-    // Step 2 completed -> Issue the 8-Hour Key
-    const now = Date.now();
-    const expiresAt = now + EXPIRATION_HOURS * 60 * 60 * 1000;
+    // ══════════════════════════════════════════════════════
+    // ACTION: IMPORT ANY KEY STRING (Calculates details)
+    // ══════════════════════════════════════════════════════
+    if (action === 'import-key') {
+      const keyStr = (req.query && req.query.key) || (req.body && req.body.key);
+      if (!keyStr) {
+        return res.status(400).json({ success: false, message: 'Missing key string to import.' });
+      }
 
-    const keyPayload = {
-      v: 1,
-      iat: now,
-      exp: expiresAt,
-      note: 'LootLabs Checkpoint Key',
-      durationLabel: '8 Hours',
-      nonce: crypto.randomBytes(6).toString('hex')
-    };
+      const decoded = decodeKeyInfo(keyStr);
+      if (!decoded) {
+        return res.status(400).json({ success: false, message: 'Invalid or malformed key.' });
+      }
 
-    const keyPayloadB64 = Buffer.from(JSON.stringify(keyPayload)).toString('base64url');
-    const keyHmac = crypto.createHmac('sha256', SECRET);
-    keyHmac.update(keyPayloadB64);
-    const keySig = keyHmac.digest('base64url');
+      localKeysRegistry.set(keyStr, decoded);
 
-    const key = `KEY_${keyPayloadB64}.${keySig}`;
+      return res.status(200).json({
+        success: true,
+        action: 'import-key',
+        record: decoded,
+        message: 'Key successfully imported and verified!'
+      });
+    }
 
-    const keyRecord = {
-      key: key,
-      note: 'LootLabs Checkpoint Key',
-      source: 'LootLabs Gateway',
-      isLifetime: false,
-      durationLabel: '8 Hours',
-      createdAt: now,
-      formattedCreated: new Date(now).toLocaleString(),
-      expiresAt: expiresAt,
-      formattedExpires: new Date(expiresAt).toLocaleString(),
-      boundHwid: 'Unbound (Auto-locks on first device)',
-      revoked: false
-    };
+    // ══════════════════════════════════════════════════════
+    // ACTION: REVOKE / DELETE SINGLE KEY
+    // ══════════════════════════════════════════════════════
+    if (action === 'revoke' || action === 'delete') {
+      const targetKey = (req.query && req.query.key) || (req.body && req.body.key);
+      const reason = (req.query && req.query.reason) || (req.body && req.body.reason) || 'Revoked by owner';
 
-    // 1. Notify Discord Webhook
-    notifyDiscord(keyRecord);
+      if (!targetKey) {
+        return res.status(400).json({ success: false, message: 'Missing target key to revoke.' });
+      }
 
-    // 2. Save to Cloud KV Storage
-    saveKeyToCloud(keyRecord).catch(() => {});
+      const hash = hashToken(targetKey);
+      localRevokedKeys.set(hash, {
+        hash: hash,
+        token: targetKey,
+        revokedAt: Date.now(),
+        reason: reason
+      });
 
-    return safeRedirect(res, `/?claimed=true&key=${encodeURIComponent(key)}&exp=${expiresAt}`);
-  } catch (globalErr) {
-    console.error('[Claim Error]', globalErr);
-    return safeRedirect(res, `/?error=${encodeURIComponent(globalErr.message)}`);
+      if (localKeysRegistry.has(targetKey)) {
+        const item = localKeysRegistry.get(targetKey);
+        item.revoked = true;
+        item.status = 'revoked';
+        localKeysRegistry.set(targetKey, item);
+      }
+
+      return res.status(200).json({
+        success: true,
+        action: 'revoke',
+        message: 'Key successfully revoked and blacklisted.',
+        revokedKey: targetKey
+      });
+    }
+
+    // ══════════════════════════════════════════════════════
+    // ACTION: UNREVOKE KEY
+    // ══════════════════════════════════════════════════════
+    if (action === 'unrevoke') {
+      const targetKey = (req.query && req.query.key) || (req.body && req.body.key);
+      if (!targetKey) {
+        return res.status(400).json({ success: false, message: 'Missing target key to unrevoke.' });
+      }
+
+      const hash = hashToken(targetKey);
+      localRevokedKeys.delete(hash);
+
+      if (localKeysRegistry.has(targetKey)) {
+        const item = localKeysRegistry.get(targetKey);
+        item.revoked = false;
+        item.status = 'active';
+        localKeysRegistry.set(targetKey, item);
+      }
+
+      return res.status(200).json({
+        success: true,
+        action: 'unrevoke',
+        message: 'Key un-revoked successfully.'
+      });
+    }
+
+    return res.status(400).json({ success: false, message: 'Unknown admin action.' });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: 'Admin error: ' + err.message
+    });
   }
 };
