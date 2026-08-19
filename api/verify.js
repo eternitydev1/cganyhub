@@ -1,8 +1,11 @@
 const crypto = require('crypto');
-const { addRevokedKey, removeRevokedKey, checkIsRevoked, saveKeyRecord, fetchAllKeyRecords, localRevokedCache, localKeysCache } = require('./storage');
 
 const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 const EXPIRATION_HOURS = 8;
+
+// Local Memory Caches
+const localRevokedCache = new Map();
+const localKeysCache = new Map();
 
 function hashTokenForBlacklist(token) {
   if (!token) return '';
@@ -12,6 +15,37 @@ function hashTokenForBlacklist(token) {
 function hashHwid(rawHwid) {
   if (!rawHwid) return 'unspecified';
   return crypto.createHash('sha256').update(String(rawHwid).trim()).digest('hex').substring(0, 16);
+}
+
+function addRevokedKey(token, reason) {
+  const hash = hashTokenForBlacklist(token);
+  const rec = {
+    hash: hash,
+    token: token,
+    revokedAt: Date.now(),
+    reason: reason || 'Revoked by owner'
+  };
+  localRevokedCache.set(hash, rec);
+  return rec;
+}
+
+function removeRevokedKey(token) {
+  const hash = hashTokenForBlacklist(token);
+  localRevokedCache.delete(hash);
+}
+
+function checkIsRevoked(token) {
+  const hash = hashTokenForBlacklist(token);
+  return localRevokedCache.get(hash) || null;
+}
+
+function saveKeyRecord(keyRecord) {
+  if (!keyRecord || !keyRecord.key) return;
+  localKeysCache.set(keyRecord.key, keyRecord);
+}
+
+function fetchAllKeyRecords() {
+  return Array.from(localKeysCache.values());
 }
 
 function verifyToken(token, clientHwid) {
@@ -26,7 +60,7 @@ function verifyToken(token, clientHwid) {
 
   const tokenHash = hashTokenForBlacklist(cleanToken);
 
-  // 1. Check Synchronous Local Cache for Revocation
+  // 1. Check Revocation Blacklist
   if (localRevokedCache.has(tokenHash)) {
     const info = localRevokedCache.get(tokenHash);
     return {
@@ -90,7 +124,6 @@ function verifyToken(token, clientHwid) {
       revoked: false
     };
     localKeysCache.set(cleanToken, rec);
-    saveKeyRecord(rec).catch(() => {});
   }
 
   if (isExpired) {
@@ -147,7 +180,7 @@ function verifyToken(token, clientHwid) {
   };
 }
 
-module.exports = async (req, res) => {
+module.exports = (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, User-Agent, X-Hub-Key, X-HWID');
@@ -158,18 +191,6 @@ module.exports = async (req, res) => {
 
   const key = req.query.key || (req.body && req.body.key) || req.headers['x-hub-key'];
   const hwid = req.query.hwid || (req.body && req.body.hwid) || req.headers['x-hwid'];
-
-  // Check async cloud revocation
-  if (key) {
-    const revokedInfo = await checkIsRevoked(key);
-    if (revokedInfo) {
-      return res.status(403).json({
-        valid: false,
-        revoked: true,
-        message: `This key has been deleted/revoked by the administrator (${revokedInfo.reason || 'Revoked'}).`
-      });
-    }
-  }
 
   const result = verifyToken(key, hwid);
 
