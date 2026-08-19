@@ -1,24 +1,15 @@
 const crypto = require('crypto');
-const { setGlobalNukeTimestamp, setGlobalNukeTimestamp: setNuke, addRevokedKey } = require('./verify');
+const { blacklistKey, unblacklistKey, isKeyBlacklisted, setNukeTimestamp, getNukeTimestamp, saveKey, getAllKeys, hashToken } = require('./storage');
 
 const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Fasszoporomangutanok265hitlerfasza99';
-
-// In-Memory Key Registry & Revocation List for Admin Dashboard
-const localKeysRegistry = new Map();
-const localRevokedKeys = new Map();
-
-function hashToken(token) {
-  if (!token) return '';
-  return crypto.createHash('sha256').update(String(token).trim()).digest('hex');
-}
 
 function hashHwid(rawHwid) {
   if (!rawHwid) return null;
   return crypto.createHash('sha256').update(String(rawHwid).trim()).digest('hex').substring(0, 16);
 }
 
-function decodeKeyInfo(token) {
+function decodeKeyInfo(token, nukeTime = 0) {
   try {
     if (!token || !token.startsWith('KEY_')) return null;
     const parts = token.slice(4).split('.');
@@ -29,11 +20,7 @@ function decodeKeyInfo(token) {
     const now = Date.now();
     const isLifetime = payload.isLifetime === true;
     const expired = !isLifetime && now > payload.exp;
-    const revoked = localRevokedKeys.has(hashToken(token));
-
-    let status = 'active';
-    if (revoked) status = 'revoked';
-    else if (expired) status = 'expired';
+    const nuked = nukeTime > 0 && payload.iat && payload.iat <= nukeTime;
 
     let dur = payload.durationLabel || '8 Hours';
     if (!payload.durationLabel && payload.exp && payload.iat) {
@@ -52,9 +39,9 @@ function decodeKeyInfo(token) {
       expiresAt: payload.exp,
       formattedExpires: isLifetime ? 'Never (Lifetime)' : new Date(payload.exp).toLocaleString(),
       boundHwid: payload.hwid ? payload.hwid : 'Unbound (Auto-locks on first device)',
-      revoked: revoked,
+      revoked: nuked,
       expired: expired,
-      status: status
+      status: nuked ? 'revoked' : (expired ? 'expired' : 'active')
     };
   } catch (e) {
     return null;
@@ -165,7 +152,7 @@ module.exports = async (req, res) => {
         status: 'active'
       };
 
-      localKeysRegistry.set(generatedKey, keyRecord);
+      await saveKey(keyRecord);
 
       return res.status(200).json({
         success: true,
@@ -179,28 +166,35 @@ module.exports = async (req, res) => {
     // ACTION: LIST ALL KEYS (Admin + LootLabs Keys)
     // ══════════════════════════════════════════════════════
     if (action === 'list-keys' || action === 'dashboard') {
-      const allKeys = Array.from(localKeysRegistry.values());
+      const allRecords = await getAllKeys();
+      const nukeTime = await getNukeTimestamp();
       const now = Date.now();
+      const keys = [];
 
-      for (const item of allKeys) {
-        const revoked = localRevokedKeys.has(hashToken(item.key));
+      for (const item of allRecords) {
+        const isRevoked = await isKeyBlacklisted(item.key);
+        const nuked = nukeTime > 0 && item.createdAt && item.createdAt <= nukeTime;
         const expired = !item.isLifetime && now > item.expiresAt;
         let status = 'active';
-        if (revoked) status = 'revoked';
+        if (isRevoked || nuked) status = 'revoked';
         else if (expired) status = 'expired';
 
-        item.revoked = revoked;
-        item.expired = expired;
-        item.status = status;
+        keys.push({
+          ...item,
+          revoked: !!isRevoked || nuked,
+          expired: expired,
+          status: status
+        });
       }
 
-      allKeys.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      keys.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
       return res.status(200).json({
         success: true,
         action: 'list-keys',
-        total: allKeys.length,
-        keys: allKeys
+        total: keys.length,
+        nukeTimestamp: nukeTime,
+        keys: keys
       });
     }
 
@@ -210,15 +204,15 @@ module.exports = async (req, res) => {
     if (action === 'sync-keys') {
       const clientKeys = (req.body && req.body.keys) || [];
       for (const item of clientKeys) {
-        if (item && item.key && !localKeysRegistry.has(item.key)) {
-          localKeysRegistry.set(item.key, item);
+        if (item && item.key) {
+          await saveKey(item);
         }
       }
-      return res.status(200).json({ success: true, count: localKeysRegistry.size });
+      return res.status(200).json({ success: true });
     }
 
     // ══════════════════════════════════════════════════════
-    // ACTION: IMPORT ANY KEY STRING (Calculates details)
+    // ACTION: IMPORT ANY KEY STRING
     // ══════════════════════════════════════════════════════
     if (action === 'import-key') {
       const keyStr = (req.query && req.query.key) || (req.body && req.body.key);
@@ -226,12 +220,13 @@ module.exports = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Missing key string to import.' });
       }
 
-      const decoded = decodeKeyInfo(keyStr);
+      const nukeTime = await getNukeTimestamp();
+      const decoded = decodeKeyInfo(keyStr, nukeTime);
       if (!decoded) {
         return res.status(400).json({ success: false, message: 'Invalid or malformed key.' });
       }
 
-      localKeysRegistry.set(keyStr, decoded);
+      await saveKey(decoded);
 
       return res.status(200).json({
         success: true,
@@ -252,25 +247,12 @@ module.exports = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Missing target key to revoke.' });
       }
 
-      const hash = hashToken(targetKey);
-      localRevokedKeys.set(hash, {
-        hash: hash,
-        token: targetKey,
-        revokedAt: Date.now(),
-        reason: reason
-      });
-
-      if (localKeysRegistry.has(targetKey)) {
-        const item = localKeysRegistry.get(targetKey);
-        item.revoked = true;
-        item.status = 'revoked';
-        localKeysRegistry.set(targetKey, item);
-      }
+      await blacklistKey(targetKey, reason);
 
       return res.status(200).json({
         success: true,
         action: 'revoke',
-        message: 'Key successfully revoked and blacklisted.',
+        message: 'Key successfully revoked and blacklisted globally.',
         revokedKey: targetKey
       });
     }
@@ -284,15 +266,7 @@ module.exports = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Missing target key to unrevoke.' });
       }
 
-      const hash = hashToken(targetKey);
-      localRevokedKeys.delete(hash);
-
-      if (localKeysRegistry.has(targetKey)) {
-        const item = localKeysRegistry.get(targetKey);
-        item.revoked = false;
-        item.status = 'active';
-        localKeysRegistry.set(targetKey, item);
-      }
+      await unblacklistKey(targetKey);
 
       return res.status(200).json({
         success: true,
@@ -302,31 +276,17 @@ module.exports = async (req, res) => {
     }
 
     // ══════════════════════════════════════════════════════
-    // ACTION: NUKE / DELETE ALL EXISTING KEYS (LootLabs + Admin)
+    // ACTION: NUKE / DELETE ALL EXISTING KEYS
     // ══════════════════════════════════════════════════════
     if (action === 'nuke-all' || action === 'delete-all') {
       const now = Date.now();
-      setGlobalNukeTimestamp(now);
-
-      let count = 0;
-      for (const [key, item] of localKeysRegistry.entries()) {
-        const hash = hashToken(key);
-        localRevokedKeys.set(hash, {
-          hash: hash,
-          token: key,
-          revokedAt: now,
-          reason: 'Master Owner Nuke: All keys revoked'
-        });
-        count++;
-      }
-      localKeysRegistry.clear();
+      await setNukeTimestamp(now);
 
       return res.status(200).json({
         success: true,
         action: 'nuke-all',
         nukeTimestamp: now,
-        count: count,
-        message: `Successfully nuked and revoked ALL existing keys (including all LootLabs keys)!`
+        message: 'Successfully nuked and invalidated ALL existing keys globally!'
       });
     }
 
