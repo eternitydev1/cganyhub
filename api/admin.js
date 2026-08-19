@@ -1,11 +1,8 @@
 const crypto = require('crypto');
-const { verifyToken, isRevoked, revokeKey, unrevokeKey, getRevokedList } = require('./verify');
+const { verifyToken, isRevoked, revokeKey, unrevokeKey, getRevokedList, registerKeyRecord, getAllRegisteredKeys, deleteKeyRecord, clearInactiveKeys } = require('./verify');
 
 const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Fasszoporomangutanok265hitlerfasza99';
-
-// In-Memory Key Registry for Admin Dashboard Tracking
-const registeredKeys = new Map();
 
 function hashHwid(rawHwid) {
   if (!rawHwid) return null;
@@ -104,6 +101,7 @@ module.exports = (req, res) => {
       const keyRecord = {
         key: generatedKey,
         note: note,
+        source: 'Admin Minted',
         isLifetime: isLifetime,
         durationLabel: durationLabel,
         createdAt: now,
@@ -114,7 +112,7 @@ module.exports = (req, res) => {
         revoked: false
       };
 
-      registeredKeys.set(generatedKey, keyRecord);
+      registerKeyRecord(generatedKey, keyRecord);
 
       return res.status(200).json({
         success: true,
@@ -125,30 +123,10 @@ module.exports = (req, res) => {
     }
 
     // ══════════════════════════════════════════════════════
-    // ACTION: LIST ALL GENERATED KEYS
+    // ACTION: LIST ALL KEYS (Admin + LootLabs Keys)
     // ══════════════════════════════════════════════════════
     if (action === 'list-keys' || action === 'dashboard') {
-      const allKeys = [];
-      const now = Date.now();
-
-      for (const [k, record] of registeredKeys.entries()) {
-        const revoked = isRevoked(k);
-        const expired = !record.isLifetime && now > record.expiresAt;
-        let status = 'active';
-        if (revoked) status = 'revoked';
-        else if (expired) status = 'expired';
-
-        allKeys.push({
-          ...record,
-          revoked: revoked,
-          expired: expired,
-          status: status
-        });
-      }
-
-      // Sort newest first
-      allKeys.sort((a, b) => b.createdAt - a.createdAt);
-
+      const allKeys = getAllRegisteredKeys();
       return res.status(200).json({
         success: true,
         action: 'list-keys',
@@ -158,20 +136,33 @@ module.exports = (req, res) => {
     }
 
     // ══════════════════════════════════════════════════════
-    // ACTION: REGISTER / SYNC CLIENT-SIDE SAVED KEYS
+    // ACTION: SYNC KEYS
     // ══════════════════════════════════════════════════════
     if (action === 'sync-keys') {
       const clientKeys = (req.body && req.body.keys) || [];
       for (const item of clientKeys) {
-        if (item && item.key && !registeredKeys.has(item.key)) {
-          registeredKeys.set(item.key, item);
+        if (item && item.key) {
+          registerKeyRecord(item.key, item);
         }
       }
-      return res.status(200).json({ success: true, count: registeredKeys.size });
+      return res.status(200).json({ success: true, count: getAllRegisteredKeys().length });
     }
 
     // ══════════════════════════════════════════════════════
-    // ACTION: REVOKE / DELETE KEY
+    // ACTION: DELETE ALL EXPIRED & REVOKED KEYS
+    // ══════════════════════════════════════════════════════
+    if (action === 'clear-inactive' || action === 'delete-expired') {
+      const deletedCount = clearInactiveKeys();
+      return res.status(200).json({
+        success: true,
+        action: 'clear-inactive',
+        deletedCount: deletedCount,
+        message: `Successfully cleaned up ${deletedCount} expired and revoked keys.`
+      });
+    }
+
+    // ══════════════════════════════════════════════════════
+    // ACTION: REVOKE / DELETE SINGLE KEY
     // ══════════════════════════════════════════════════════
     if (action === 'revoke' || action === 'delete') {
       const targetKey = req.query.key || (req.body && req.body.key);
@@ -183,16 +174,10 @@ module.exports = (req, res) => {
 
       revokeKey(targetKey, reason);
 
-      if (registeredKeys.has(targetKey)) {
-        const item = registeredKeys.get(targetKey);
-        item.revoked = true;
-        registeredKeys.set(targetKey, item);
-      }
-
       return res.status(200).json({
         success: true,
         action: 'revoke',
-        message: 'Key successfully revoked and deleted.',
+        message: 'Key successfully revoked and blacklisted.',
         revokedKey: targetKey,
         reason: reason
       });
@@ -208,17 +193,27 @@ module.exports = (req, res) => {
       }
       unrevokeKey(targetKey);
 
-      if (registeredKeys.has(targetKey)) {
-        const item = registeredKeys.get(targetKey);
-        item.revoked = false;
-        registeredKeys.set(targetKey, item);
-      }
-
       return res.status(200).json({
         success: true,
         action: 'unrevoke',
         message: 'Key un-revoked successfully.'
       });
+    }
+
+    // ══════════════════════════════════════════════════════
+    // ACTION: IMPORT PAST LOOTLABS KEY INTO DASHBOARD
+    // ══════════════════════════════════════════════════════
+    if (action === 'import-key') {
+      const keyStr = req.query.key || (req.body && req.body.key);
+      if (!keyStr) {
+        return res.status(400).json({ success: false, message: 'Missing key string to import.' });
+      }
+      const v = verifyToken(keyStr);
+      if (v.valid || v.expired) {
+        return res.status(200).json({ success: true, message: 'Key imported into registry.' });
+      } else {
+        return res.status(400).json({ success: false, message: v.message || 'Invalid key.' });
+      }
     }
 
     return res.status(400).json({ success: false, message: 'Unknown admin action.' });
