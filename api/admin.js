@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const { verifyToken, isRevoked, revokeKey, unrevokeKey, getRevokedList } = require('./verify');
 
 const SECRET = process.env.KEY_SECRET || 'CIGANYHUB_SECURE_SECRET_CHANGE_ME_987654321';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'ciganyhub_admin_2026_supersecret';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Fasszoporomangutanok265hitlerfasza99';
 
 function hashHwid(rawHwid) {
   if (!rawHwid) return null;
