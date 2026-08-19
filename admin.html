@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CiganyHub — Owner Management Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Orbitron:wght@700;900&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-base: #05040a;
+            --bg-surface: #0a0814;
+            --card-bg: rgba(14, 12, 24, 0.85);
+            --card-border: rgba(255, 30, 39, 0.28);
+            --card-border-hover: rgba(255, 30, 39, 0.6);
+            --accent-red: #ff1e27;
+            --accent-glow: rgba(255, 30, 39, 0.5);
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --text-muted: #64748b;
+            --success-green: #22c55e;
+            --gold: #f59e0b;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 24px 16px;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(255, 30, 39, 0.18) 0%, transparent 65%),
+                radial-gradient(circle at 100% 100%, rgba(255, 30, 39, 0.08) 0%, transparent 50%);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 580px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .header {
+            text-align: center;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 14px;
+            border-radius: 9999px;
+            background: rgba(255, 30, 39, 0.12);
+            border: 1px solid rgba(255, 30, 39, 0.35);
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            color: var(--accent-red);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            text-shadow: 0 0 25px rgba(255, 30, 39, 0.4);
+        }
+
+        .title span { color: var(--accent-red); text-shadow: 0 0 20px var(--accent-glow); }
+        .subtitle { font-size: 0.88rem; color: var(--text-sub); }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 22px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .card-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: 0.04em;
+        }
+
+        .card-tag {
+            font-size: 0.7rem;
+            font-family: 'Fira Code', monospace;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-sub);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 13px 18px;
+            border-radius: 9px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            outline: none;
+        }
+
+        .btn-red {
+            background: linear-gradient(135deg, #ff1e27 0%, #b91c1c 100%);
+            color: white;
+            box-shadow: 0 4px 18px rgba(255, 30, 39, 0.35);
+        }
+
+        .btn-red:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+        .btn-gold {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: black;
+            font-weight: 800;
+        }
+
+        .btn-gold:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-main);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.12); }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .preset-btn {
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-sub);
+            font-family: 'Fira Code', monospace;
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover, .preset-btn.active {
+            background: rgba(255, 30, 39, 0.15);
+            border-color: var(--accent-red);
+            color: white;
+        }
+
+        .input-text {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            padding: 12px 14px;
+            color: white;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            outline: none;
+            margin-bottom: 12px;
+        }
+
+        .input-text:focus {
+            border-color: var(--accent-red);
+            box-shadow: 0 0 10px rgba(255, 30, 39, 0.2);
+        }
+
+        .result-box {
+            display: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            margin-top: 14px;
+            font-family: 'Fira Code', monospace;
+            word-break: break-all;
+            line-height: 1.5;
+        }
+
+        .result-box.success {
+            display: block;
+            background: rgba(34, 197, 94, 0.08);
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            color: #86efac;
+        }
+
+        .result-box.error {
+            display: block;
+            background: rgba(255, 30, 39, 0.08);
+            border: 1px solid rgba(255, 30, 39, 0.35);
+            color: #ff6b72;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="badge"><i class="fa-solid fa-crown"></i> OWNER CONSOLE</div>
+            <h1 class="title">CIGANY<span>ADMIN</span></h1>
+            <p class="subtitle">Mint custom-duration keys and manage access revocations.</p>
+        </div>
+
+        <!-- 1. Authentication -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title"><i class="fa-solid fa-lock"></i> Admin Authentication</span>
+                <span class="card-tag">REQUIRED</span>
+            </div>
+            <input type="password" id="adminPassword" class="input-text" placeholder="Enter Admin Password..." value="" />
+        </div>
+
+        <!-- 2. Mint Custom Keys -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title"><i class="fa-solid fa-key"></i> Mint Custom Key</span>
+                <span class="card-tag">GENERATOR</span>
+            </div>
+
+            <div class="preset-grid">
+                <button class="preset-btn" onclick="selectDuration(1, '1 Hour')">1 Hour</button>
+                <button class="preset-btn" onclick="selectDuration(10, '10 Hours')">10 Hours</button>
+                <button class="preset-btn active" onclick="selectDuration(24, '24 Hours (1 Day)')">24 Hours</button>
+                <button class="preset-btn" onclick="selectDuration(168, '7 Days')">7 Days</button>
+                <button class="preset-btn" onclick="selectDuration(720, '30 Days')">30 Days</button>
+                <button class="preset-btn" onclick="selectDuration(8760, '365 Days')">365 Days</button>
+                <button class="preset-btn" style="grid-column: span 3; color: var(--gold); border-color: rgba(245, 158, 11, 0.3);" onclick="selectLifetime()">⭐ Lifetime Access (100 Years)</button>
+            </div>
+
+            <input type="text" id="customNote" class="input-text" placeholder="Optional Note (e.g. VIP Buyer #42, Testing)" />
+            <input type="text" id="customHwid" class="input-text" placeholder="Optional Specific HWID (leave empty for auto-lock)" />
+
+            <button class="btn btn-red" onclick="generateAdminKey()">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> MINT KEY NOW
+            </button>
+
+            <div id="genResult" class="result-box"></div>
+        </div>
+
+        <!-- 3. Revoke / Delete Key -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title"><i class="fa-solid fa-ban"></i> Revoke / Delete Key</span>
+                <span class="card-tag">BLACKLIST</span>
+            </div>
+
+            <input type="text" id="revokeKeyInput" class="input-text" placeholder="Paste KEY_... to delete and blacklist" />
+            <input type="text" id="revokeReason" class="input-text" placeholder="Reason (e.g. Leaked, Refunded, Expired early)" />
+
+            <button class="btn btn-secondary" style="border-color: rgba(255, 30, 39, 0.4); color: #ff6b72;" onclick="revokeKeyAction()">
+                <i class="fa-solid fa-trash"></i> REVOKE KEY IMMEDIATELY
+            </button>
+
+            <div id="revokeResult" class="result-box"></div>
+        </div>
+
+        <div class="footer">
+            CiganyHub Owner Panel &bull; Authorized Access Only
+        </div>
+    </div>
+
+    <script>
+        let selectedHours = 24;
+        let isLifetimeSelected = false;
+
+        function selectDuration(hours, label) {
+            selectedHours = hours;
+            isLifetimeSelected = false;
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        function selectLifetime() {
+            isLifetimeSelected = true;
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        async function generateAdminKey() {
+            const password = document.getElementById('adminPassword').value.trim();
+            const note = document.getElementById('customNote').value.trim();
+            const hwid = document.getElementById('customHwid').value.trim();
+            const resultBox = document.getElementById('genResult');
+
+            if (!password) {
+                resultBox.className = 'result-box error';
+                resultBox.innerText = 'Please enter your Admin Password above.';
+                return;
+            }
+
+            resultBox.className = 'result-box';
+            resultBox.style.display = 'block';
+            resultBox.innerText = 'Minting cryptographic token...';
+
+            try {
+                const payload = {
+                    password: password,
+                    action: 'generate',
+                    hours: selectedHours,
+                    lifetime: isLifetimeSelected,
+                    note: note,
+                    hwid: hwid || null
+                };
+
+                const res = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                if (data.success && data.key) {
+                    resultBox.className = 'result-box success';
+                    resultBox.innerHTML = `
+                        <strong>KEY GENERATED SUCCESSFULLY!</strong><br><br>
+                        <strong>Key:</strong><br>${data.key}<br><br>
+                        <strong>Duration:</strong> ${data.durationHours}<br>
+                        <strong>Expires:</strong> ${data.formattedExpires}<br>
+                        <strong>Device Lock:</strong> ${data.boundHwid}<br><br>
+                        <button class="btn btn-gold" style="padding: 8px 12px; font-size: 0.8rem;" onclick="copyMintedKey('${data.key}')">
+                            <i class="fa-solid fa-copy"></i> COPY KEY
+                        </button>
+                    `;
+                } else {
+                    resultBox.className = 'result-box error';
+                    resultBox.innerText = data.message || 'Failed to generate key.';
+                }
+            } catch (err) {
+                resultBox.className = 'result-box error';
+                resultBox.innerText = 'Error: ' + err.message;
+            }
+        }
+
+        function copyMintedKey(keyStr) {
+            navigator.clipboard.writeText(keyStr).then(() => {
+                alert('Key copied to clipboard!');
+            });
+        }
+
+        async function revokeKeyAction() {
+            const password = document.getElementById('adminPassword').value.trim();
+            const key = document.getElementById('revokeKeyInput').value.trim();
+            const reason = document.getElementById('revokeReason').value.trim();
+            const resultBox = document.getElementById('revokeResult');
+
+            if (!password) {
+                resultBox.className = 'result-box error';
+                resultBox.innerText = 'Please enter your Admin Password.';
+                return;
+            }
+            if (!key) {
+                resultBox.className = 'result-box error';
+                resultBox.innerText = 'Please paste the key you wish to revoke.';
+                return;
+            }
+
+            resultBox.className = 'result-box';
+            resultBox.style.display = 'block';
+            resultBox.innerText = 'Blacklisting key...';
+
+            try {
+                const res = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        password: password,
+                        action: 'revoke',
+                        key: key,
+                        reason: reason || 'Revoked by owner'
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    resultBox.className = 'result-box success';
+                    resultBox.innerHTML = `<strong>KEY BLACKLISTED & DELETED!</strong><br>Any user attempting to run this key will now be rejected.`;
+                } else {
+                    resultBox.className = 'result-box error';
+                    resultBox.innerText = data.message || 'Failed to revoke key.';
+                }
+            } catch (err) {
+                resultBox.className = 'result-box error';
+                resultBox.innerText = 'Error: ' + err.message;
+            }
+        }
+    </script>
+</body>
+</html>
