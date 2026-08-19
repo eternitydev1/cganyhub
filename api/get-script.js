@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { verifyToken, checkIsRevoked } = require('./verify');
+const { verifyToken } = require('./verify');
 const SpeedKeyboardScript = require('./games/speed_keyboard');
 
 const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
@@ -84,18 +84,12 @@ module.exports = async (req, res) => {
   timestamp = timestamp || parseInt(req.query.timestamp || '0', 10);
   authSig = authSig || req.query.authSig;
 
-  // 2. Validate Key
+  // 2. Validate Key & Check Revocation Blacklist
   if (!key) {
     return res.status(401).send('-- [401 Unauthorized] Missing key parameter.');
   }
 
-  // Check if key is revoked/blacklisted
-  const revokedData = await checkIsRevoked(key);
-  if (revokedData) {
-    return res.status(403).send(`-- [403 Forbidden] This key has been deleted/revoked by the administrator (${revokedData.reason || 'Revoked'}).`);
-  }
-
-  const verifyResult = verifyToken(key, hwid);
+  const verifyResult = await verifyToken(key, hwid);
   if (!verifyResult.valid) {
     return res.status(403).send(`-- [403 Forbidden] ${verifyResult.message || 'Invalid key.'}`);
   }
