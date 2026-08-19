@@ -256,15 +256,15 @@ TweenService:Create(GlowBg,
     {BackgroundTransparency = 0.86, Size = UDim2.new(0,PW+110,0,PH+90)}):Play()
 
 -- Main Panel
-local Panel = MkFrame(GUI, UDim2.new(0,PW,0,PH), UDim2.new(0.5,0,0.5,0), C.bg1, 12, 2)
+local Panel = MkFrame(GUI, UDim2.new(0,PW,0,PH), UDim2.new(0.5,0,0.5,0), C.bg1, 14, 2)
 Panel.AnchorPoint = Vector2.new(0.5,0.5)
 Panel.ClipsDescendants = true
 Panel.Active = true
 Panel.Draggable = true
 MkStroke(Panel, C.brd2, 1)
 
--- Glass Sheen
-local Sheen = MkFrame(Panel, UDim2.new(1,0,0.5,0), UDim2.new(0,0,0,0), C.white, 0, 3)
+-- Glass Sheen (Properly curved top corners)
+local Sheen = MkFrame(Panel, UDim2.new(1,0,0.45,0), UDim2.new(0,0,0,0), C.white, 14, 3)
 Sheen.BackgroundTransparency = 0.97
 local sheenG = Instance.new("UIGradient", Sheen)
 sheenG.Rotation = 90
@@ -274,13 +274,15 @@ sheenG.Transparency = NumberSequence.new{
 }
 
 -- ════════════════════════════════════════════════════════
--- TOP BAR
+-- TOP BAR (Properly trimmed top corners)
 -- ════════════════════════════════════════════════════════
 local TBH = isMobile and 44 or 38
-local TopBar = MkFrame(Panel, UDim2.new(1,0,0,TBH), UDim2.new(0,0,0,0), C.bg0, 0, 4)
-Instance.new("UICorner", TopBar).CornerRadius = UDim.new(0, 12)
-MkFrame(TopBar, UDim2.new(1,0,0,12), UDim2.new(0,0,1,-12), C.bg0, 0, 4)
-MkFrame(TopBar, UDim2.new(1,0,0,2), UDim2.new(0,0,1,-2), C.acc, 0, 5)
+local TopBar = MkFrame(Panel, UDim2.new(1,0,0,TBH), UDim2.new(0,0,0,0), C.bg0, 14, 4)
+-- Square out only the bottom of the topbar so the top corners stay rounded:
+local tbBottomPatch = MkFrame(TopBar, UDim2.new(1,0,0,12), UDim2.new(0,0,1,-12), C.bg0, 0, 4)
+tbBottomPatch.BorderSizePixel = 0
+local tbRedLine = MkFrame(TopBar, UDim2.new(1,0,0,2), UDim2.new(0,0,1,-2), C.acc, 0, 5)
+tbRedLine.BorderSizePixel = 0
 
 -- Brand text
 local BrandLbl = MkLbl(TopBar,
@@ -543,7 +545,7 @@ end)
 -- ════════════════════════════════════════════════════════
 -- LOADING OVERLAY
 -- ════════════════════════════════════════════════════════
-local LoadOv = MkFrame(Panel, UDim2.new(1,0,1,0), UDim2.new(0,0,0,0), C.bg1, 12, 20)
+local LoadOv = MkFrame(Panel, UDim2.new(1,0,1,0), UDim2.new(0,0,0,0), C.bg1, 14, 20)
 LoadOv.Visible = false
 
 local SpinH = MkFrame(LoadOv, UDim2.new(0,60,0,60), UDim2.new(0.5,-30,0.5,-50), C.bg1, 0, 21)
@@ -588,7 +590,7 @@ end
 -- SUCCESS OVERLAY
 -- ════════════════════════════════════════════════════════
 local function ShowSuccess(msg)
-    local Ov = MkFrame(Panel, UDim2.new(1,0,1,0), UDim2.new(0,0,0,0), C.bg1, 12, 30)
+    local Ov = MkFrame(Panel, UDim2.new(1,0,1,0), UDim2.new(0,0,0,0), C.bg1, 14, 30)
     Ov.BackgroundTransparency = 1
     Tw(Ov, 0.22, {BackgroundTransparency=0.05})
 
