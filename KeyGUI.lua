@@ -6,7 +6,7 @@
 ]]
 
 local VERCEL_DOMAIN  = "https://cganyhub.vercel.app"
-local DISCORD_INVITE = "https://discord.gg/cUMFBpTSB5"
+local DISCORD_INVITE = "https://dsc.gg/ciganyhub"
 local KEY_FILE       = "ciganyhub_key.json"
 
 -- ════════════════════════════════════════════════════════
@@ -95,8 +95,12 @@ end
 local function performHttpRequest(url, method, customHeaders, bodyData)
     method = method or "GET"
     local headers = customHeaders or {}
+    local nowTime = tostring(os.time() * 1000)
+    local nonce = tostring(math.random(1000000, 9999999)) .. "_" .. nowTime
+
     headers["X-HWID"] = MY_HWID
-    headers["X-Timestamp"] = tostring(os.time())
+    headers["X-Timestamp"] = nowTime
+    headers["X-Nonce"] = nonce
     headers["X-Client-Ver"] = "1.1"
 
     if detectHttpSpy() then
