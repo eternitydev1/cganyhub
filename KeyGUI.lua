@@ -82,18 +82,49 @@ local MY_HWID = getClientHWID()
 local raw_http_get = (clonefunction and clonefunction(game.HttpGet)) or game.HttpGet
 local raw_request  = (clonefunction and (request and clonefunction(request) or (syn and syn.request and clonefunction(syn.request)) or (http and http.request and clonefunction(http.request)) or (http_request and clonefunction(http_request)))) or (request or (syn and syn.request) or (http and http.request) or http_request)
 
+local function getDetectedGame()
+    if getgenv and getgenv().CiganyHub_Game and getgenv().CiganyHub_Game ~= "" then
+        return tostring(getgenv().CiganyHub_Game)
+    end
+    if _G.CiganyHub_Game and _G.CiganyHub_Game ~= "" then
+        return tostring(_G.CiganyHub_Game)
+    end
+
+    local placeId = tostring(game.PlaceId)
+    local gameId = tostring(game.GameId)
+    
+    local title = ""
+    pcall(function()
+        local info = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
+        if info and info.Name then
+            title = string.lower(info.Name)
+        end
+    end)
+
+    if string.find(title, "garden") or string.find(title, "gag") or string.find(title, "grow") or placeId == "18429188544" or placeId == "12688469564" or placeId == "13822092248" or placeId == "14902166687" or gameId == "6159672728" then
+        return "gag2"
+    elseif string.find(title, "murder") or string.find(title, "mm2") or string.find(title, "mystery") or placeId == "142823291" or placeId == "3351327787" or placeId == "66654135" then
+        return "mm2"
+    elseif string.find(title, "keyboard") or string.find(title, "speed") or placeId == "10842831818" or placeId == "12519159074" then
+        return "speed_keyboard"
+    end
+
+    return title ~= "" and title or "gag2"
+end
+
 local function performHttpRequest(url, method, customHeaders, bodyData)
     method = method or "GET"
     local headers = customHeaders or {}
     local nowTime = tostring(os.time() * 1000)
     local nonce = tostring(math.random(1000000, 9999999)) .. "_" .. nowTime
+    local detectedGame = getDetectedGame()
 
     headers["X-HWID"] = MY_HWID
     headers["X-Timestamp"] = nowTime
     headers["X-Nonce"] = nonce
     headers["X-Client-Ver"] = "1.1"
     headers["X-Game-Id"] = tostring(game.PlaceId)
-    headers["X-Game-Name"] = (getgenv and getgenv().CiganyHub_Game) or ""
+    headers["X-Game-Name"] = detectedGame
 
     if raw_request then
         local ok, res = pcall(function()
@@ -707,24 +738,25 @@ local function DoVerify(rawKey, isAutoCheck)
 
     task.spawn(function()
         local url = VERCEL_DOMAIN .. "/api/get-script"
+        local detectedGame = getDetectedGame()
         local postBody = HttpService:JSONEncode({
             key = key,
             hwid = MY_HWID,
             placeId = tostring(game.PlaceId),
-            game = (getgenv and getgenv().CiganyHub_Game) or ""
+            game = detectedGame
         })
         local headers = {
             ["Content-Type"] = "application/json",
             ["X-Hub-Key"] = key,
             ["X-HWID"] = MY_HWID,
             ["X-Game-Id"] = tostring(game.PlaceId),
-            ["X-Game-Name"] = (getgenv and getgenv().CiganyHub_Game) or ""
+            ["X-Game-Name"] = detectedGame
         }
         local body, status = performHttpRequest(url, "POST", headers, postBody)
 
         -- Fallback to GET with query params if executor does not support POST requests
         if status ~= 200 or not body or string.find(body, "500") then
-            local fallbackUrl = VERCEL_DOMAIN .. "/api/get-script?key=" .. HttpService:UrlEncode(key) .. "&hwid=" .. HttpService:UrlEncode(MY_HWID) .. "&placeId=" .. tostring(game.PlaceId) .. "&game=" .. HttpService:UrlEncode((getgenv and getgenv().CiganyHub_Game) or "")
+            local fallbackUrl = VERCEL_DOMAIN .. "/api/get-script?key=" .. HttpService:UrlEncode(key) .. "&hwid=" .. HttpService:UrlEncode(MY_HWID) .. "&placeId=" .. tostring(game.PlaceId) .. "&game=" .. HttpService:UrlEncode(detectedGame)
             body, status = performHttpRequest(fallbackUrl, "GET", headers, nil)
         end
 
