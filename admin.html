@@ -470,21 +470,21 @@
 
         <!-- 2. Statistics Summary -->
         <div class="stats-grid">
-            <div class="stat-card">
+            <div class="stat-card" onclick="setFilterStatus('all')" style="cursor:pointer;" title="Click to show All Keys">
                 <div id="statTotal" class="stat-val">0</div>
-                <div class="stat-lbl">Total Keys</div>
+                <div class="stat-lbl">Total Keys (Show All)</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" onclick="setFilterStatus('active')" style="cursor:pointer;" title="Click to show Active Only">
                 <div id="statActive" class="stat-val active-count">0</div>
-                <div class="stat-lbl">Active Keys</div>
+                <div class="stat-lbl">Active Keys (Filter)</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" onclick="setFilterStatus('expired')" style="cursor:pointer;" title="Click to show Expired Only">
                 <div id="statExpired" class="stat-val expired-count">0</div>
-                <div class="stat-lbl">Expired Keys</div>
+                <div class="stat-lbl">Expired Keys (Filter)</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" onclick="setFilterStatus('revoked')" style="cursor:pointer;" title="Click to show Revoked Only">
                 <div id="statRevoked" class="stat-val revoked-count">0</div>
-                <div class="stat-lbl">Revoked Keys</div>
+                <div class="stat-lbl">Revoked Keys (Filter)</div>
             </div>
         </div>
 
@@ -549,9 +549,12 @@
         <div class="card">
             <div class="card-header">
                 <span class="card-title"><i class="fa-solid fa-table-list"></i> Key Management Dashboard</span>
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                    <button id="btnToggleHideInactive" class="btn btn-gold" style="font-size:0.78rem; padding:8px 14px; cursor:pointer;" onclick="toggleHideInactiveButton()">
+                        <i class="fa-solid fa-eye-slash"></i> HIDE EXPIRED & REVOKED
+                    </button>
                     <button class="btn btn-danger" style="font-size:0.75rem; padding:6px 12px; background:rgba(239, 68, 68, 0.25); border-color:#ef4444;" onclick="nukeAllKeys()">
-                        <i class="fa-solid fa-radiation"></i> NUKE ALL KEYS
+                        <i class="fa-solid fa-radiation"></i> NUKE ALL
                     </button>
                     <button class="btn btn-danger" style="font-size:0.75rem; padding:6px 12px;" onclick="deleteAllExpiredKeys()">
                         <i class="fa-solid fa-trash-can"></i> CLEAR EXPIRED
@@ -621,8 +624,7 @@
             if (savedHide !== null) {
                 hideInactive = savedHide === 'true';
             }
-            const hideCb = document.getElementById('hideInactiveCheckbox');
-            if (hideCb) hideCb.checked = hideInactive;
+            updateHideButtonUI();
 
             const savedPass = localStorage.getItem(LOCAL_STORAGE_PASS);
             if (savedPass) {
@@ -631,14 +633,47 @@
             }
         });
 
+        function toggleHideInactiveButton() {
+            hideInactive = !hideInactive;
+            localStorage.setItem('ciganyhub_hide_inactive', hideInactive ? 'true' : 'false');
+            updateHideButtonUI();
+            renderTable(globalCachedKeys);
+        }
+
+        function updateHideButtonUI() {
+            const btn = document.getElementById('btnToggleHideInactive');
+            const hideCb = document.getElementById('hideInactiveCheckbox');
+            if (hideCb) hideCb.checked = hideInactive;
+            if (btn) {
+                if (hideInactive) {
+                    btn.style.background = 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)';
+                    btn.style.color = '#ffffff';
+                    btn.style.boxShadow = '0 0 14px rgba(34, 197, 94, 0.4)';
+                    btn.innerHTML = '<i class="fa-solid fa-filter"></i> EXPIRED HIDDEN (SHOW ALL)';
+                } else {
+                    btn.style.background = 'rgba(255, 255, 255, 0.08)';
+                    btn.style.color = 'var(--text-main)';
+                    btn.style.boxShadow = 'none';
+                    btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i> HIDE EXPIRED & REVOKED';
+                }
+            }
+        }
+
         function onHideInactiveToggle(checked) {
             hideInactive = checked;
             localStorage.setItem('ciganyhub_hide_inactive', checked ? 'true' : 'false');
+            updateHideButtonUI();
             renderTable(globalCachedKeys);
         }
 
         function setFilterStatus(status) {
             currentFilterStatus = status;
+            // If user clicked a specific filter tab (like Active or Expired), disable global hideInactive so the selected status shows properly
+            if (status !== 'all') {
+                hideInactive = false;
+                localStorage.setItem('ciganyhub_hide_inactive', 'false');
+                updateHideButtonUI();
+            }
             document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
             const tabId = 'tabFilter' + status.charAt(0).toUpperCase() + status.slice(1);
             const tabEl = document.getElementById(tabId);
