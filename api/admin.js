@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { blacklistKey, unblacklistKey, isKeyBlacklisted, setNukeTimestamp, getNukeTimestamp, saveKey, getAllKeys, deleteKey, clearInactiveKeys, hashToken } = require('./storage');
+const { blacklistKey, unblacklistKey, isKeyBlacklisted, setNukeTimestamp, getNukeTimestamp, saveKey, getAllKeys, deleteKey, clearInactiveKeys, hashToken } = require('../lib/storage');
 
 const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Fasszoporomangutanok265hitlerfasza99';
@@ -14,36 +14,54 @@ function decodeKeyInfo(token, nukeTime = 0) {
     if (!token || !token.startsWith('KEY_')) return null;
     const parts = token.slice(4).split('.');
     if (parts.length !== 2) return null;
-    const jsonStr = Buffer.from(parts[0], 'base64url').toString('utf8');
-    const payload = JSON.parse(jsonStr);
 
+    const payloadB64 = parts[0];
+    const signature = parts[1];
+
+    const hmac = crypto.createHmac('sha256', SECRET);
+    hmac.update(payloadB64);
+    const expectedSig = hmac.digest('base64url');
+    if (signature !== expectedSig) return null;
+
+    const payloadJson = Buffer.from(payloadB64, 'base64url').toString('utf8');
+    const payload = JSON.parse(payloadJson);
     const now = Date.now();
-    const isLifetime = payload.isLifetime === true;
-    const expired = !isLifetime && now > payload.exp;
-    const nuked = nukeTime > 0 && payload.iat && payload.iat <= nukeTime;
 
-    let dur = payload.durationLabel || '8 Hours';
-    if (!payload.durationLabel && payload.exp && payload.iat) {
-      const h = Math.round((payload.exp - payload.iat) / (3600 * 1000));
-      dur = `${h} Hours`;
+    const isNuked = nukeTime > 0 && payload.iat <= nukeTime;
+    const isExpired = !payload.isLifetime && (now > payload.exp);
+    let status = 'active';
+    if (isNuked) status = 'revoked';
+    else if (isExpired) status = 'expired';
+
+    let durationLabel = '8 Hours';
+    if (payload.durationLabel) {
+      durationLabel = payload.durationLabel;
+    } else if (payload.isLifetime) {
+      durationLabel = 'Lifetime Access';
+    } else if (payload.exp && payload.iat) {
+      const totalHours = Math.round((payload.exp - payload.iat) / (60 * 60 * 1000));
+      if (totalHours >= 8760) durationLabel = `${Math.round(totalHours / 8760)} Year(s)`;
+      else if (totalHours >= 720) durationLabel = `${Math.round(totalHours / 720)} Month(s)`;
+      else if (totalHours >= 24) durationLabel = `${Math.round(totalHours / 24)} Day(s)`;
+      else durationLabel = `${totalHours} Hour(s)`;
     }
 
     return {
       key: token,
-      note: payload.note || (payload.adminGen ? 'Owner Minted' : 'LootLabs Key'),
-      source: payload.adminGen ? 'Admin Minted' : 'LootLabs Gateway',
-      isLifetime: isLifetime,
-      durationLabel: isLifetime ? 'Lifetime' : dur,
-      createdAt: payload.iat || now,
-      formattedCreated: new Date(payload.iat || now).toLocaleString(),
+      note: payload.note || (payload.adminGen ? 'Owner Minted Key' : 'LootLabs User Key'),
+      source: payload.adminGen ? 'Admin Minted' : 'LootLabs',
+      isLifetime: !!payload.isLifetime,
+      durationLabel: durationLabel,
+      createdAt: payload.iat,
+      formattedCreated: new Date(payload.iat).toLocaleString(),
       expiresAt: payload.exp,
-      formattedExpires: isLifetime ? 'Never (Lifetime)' : new Date(payload.exp).toLocaleString(),
-      boundHwid: payload.hwid ? payload.hwid : 'Unbound (Auto-locks on first device)',
-      revoked: nuked,
-      expired: expired,
-      status: nuked ? 'revoked' : (expired ? 'expired' : 'active')
+      formattedExpires: payload.isLifetime ? 'Never (Lifetime)' : new Date(payload.exp).toLocaleString(),
+      boundHwid: payload.hwid ? 'Bound to HWID' : 'Unbound (Auto-locks on first device)',
+      revoked: isNuked,
+      expired: isExpired,
+      status: status
     };
-  } catch (e) {
+  } catch (err) {
     return null;
   }
 }
@@ -53,40 +71,27 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Password');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const authHeader = req.headers['x-admin-password'] || (req.body && req.body.password) || req.query.password;
+  if (!authHeader || authHeader !== ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, message: 'Invalid Admin Password.' });
   }
 
+  const action = (req.body && req.body.action) || req.query.action || 'dashboard';
+
   try {
-    // 1. Authenticate Owner
-    const headers = req.headers || {};
-    const providedPassword = (
-      headers['x-admin-password'] ||
-      (req.query && req.query.password) ||
-      (req.body && req.body.password) ||
-      ''
-    ).trim();
-
-    if (!providedPassword || providedPassword !== ADMIN_PASSWORD) {
-      return res.status(403).json({
-        success: false,
-        message: 'Unauthorized: Invalid or missing admin password.'
-      });
-    }
-
-    const action = (req.query && req.query.action) || (req.body && req.body.action) || 'list-keys';
-
     // ══════════════════════════════════════════════════════
-    // ACTION: GENERATE CUSTOM KEYS (Any Hours / Days / Lifetime)
+    // ACTION: MINT CUSTOM DURATION KEY
     // ══════════════════════════════════════════════════════
-    if (action === 'generate') {
-      let customValue = parseFloat((req.query && req.query.customValue) || (req.body && req.body.customValue) || 0);
-      const customUnit = ((req.query && req.query.customUnit) || (req.body && req.body.customUnit) || 'hours').toLowerCase();
-      let hours = parseFloat((req.query && req.query.hours) || (req.body && req.body.hours) || 0);
-      const isLifetime = (req.query && req.query.lifetime === 'true') || (req.body && req.body.lifetime === true);
-      const targetHwid = (req.query && req.query.hwid) || (req.body && req.body.hwid) || null;
-      const note = (req.query && req.query.note) || (req.body && req.body.note) || 'Owner Generated Key';
+    if (action === 'generate' || action === 'create-custom-key') {
+      const customValue = parseFloat((req.body && req.body.customValue) || req.query.customValue || 0);
+      const customUnit = (req.body && req.body.customUnit) || req.query.customUnit || 'hours';
+      const isLifetime = !!((req.body && req.body.lifetime) || req.query.lifetime === 'true');
+      const note = (req.body && req.body.note) || req.query.note || 'Owner Minted Key';
+      const targetHwid = (req.body && req.body.hwid) || req.query.hwid || null;
 
+      let hours = 8;
       if (customValue > 0) {
         if (customUnit === 'minutes') hours = customValue / 60;
         else if (customUnit === 'hours') hours = customValue;
