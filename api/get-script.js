@@ -4,6 +4,7 @@ const SpeedKeyboardScript = require('./games/speed_keyboard');
 const GAG2Script = require('./games/gag2');
 const MM2Script = require('./games/mm2');
 const BloxFruitsScript = require('./games/bloxfruits');
+const BladeBallScript = require('./games/bladeball');
 
 const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 
@@ -111,13 +112,25 @@ module.exports = async (req, res) => {
     usedNonces.set(nonce, now);
   }
 
-  // 4. Determine Target Game Script (Blox Fruits vs MM2 vs GAG2 vs Speed Keyboard)
+  // 4. Determine Target Game Script (Blade Ball vs Blox Fruits vs MM2 vs GAG2 vs Speed Keyboard)
   const requestedGame = (req.query.game || req.headers['x-game-name'] || (req.body && req.body.game) || '').toLowerCase();
   const placeIdStr = String(req.query.placeId || req.headers['x-game-id'] || (req.body && req.body.placeId) || '');
 
   let selectedScript = GAG2Script;
 
   if (
+    requestedGame === 'bladeball' ||
+    requestedGame === 'blade_ball' ||
+    requestedGame === 'blade-ball' ||
+    requestedGame.includes('blade') ||
+    requestedGame.includes('ball') ||
+    placeIdStr === '13772394625' ||
+    placeIdStr === '14732610803' ||
+    placeIdStr === '15144787463' ||
+    placeIdStr === '15264892126'
+  ) {
+    selectedScript = BladeBallScript;
+  } else if (
     requestedGame === 'bloxfruits' ||
     requestedGame === 'blox_fruits' ||
     requestedGame === 'blox-fruits' ||
