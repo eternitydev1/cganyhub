@@ -101,7 +101,11 @@ local function getDetectedGame()
         end
     end)
 
-    if string.find(title, "garden") or string.find(title, "gag") or string.find(title, "grow") or placeId == "18429188544" or placeId == "12688469564" or placeId == "13822092248" or placeId == "14902166687" or gameId == "6159672728" then
+    if string.find(title, "blade") or string.find(title, "ball") or placeId == "13772394625" or placeId == "14732610803" or placeId == "15144787463" or placeId == "15264892126" or gameId == "4777817887" then
+        return "bladeball"
+    elseif string.find(title, "blox") or string.find(title, "fruit") or placeId == "2753915549" or placeId == "4442272183" or placeId == "7449423635" or gameId == "994732206" then
+        return "bloxfruits"
+    elseif string.find(title, "garden") or string.find(title, "gag") or string.find(title, "grow") or placeId == "18429188544" or placeId == "12688469564" or placeId == "13822092248" or placeId == "14902166687" or gameId == "6159672728" then
         return "gag2"
     elseif string.find(title, "murder") or string.find(title, "mm2") or string.find(title, "mystery") or placeId == "142823291" or placeId == "3351327787" or placeId == "66654135" then
         return "mm2"
