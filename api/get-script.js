@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const { verifyToken } = require('./verify');
 const SpeedKeyboardScript = require('./games/speed_keyboard');
 const GAG2Script = require('./games/gag2');
+const MM2Script = require('./games/mm2');
 
 const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 
@@ -109,26 +110,36 @@ module.exports = async (req, res) => {
     usedNonces.set(nonce, now);
   }
 
-  // 4. Determine Target Game Script (GAG2 vs Speed Keyboard Escape)
+  // 4. Determine Target Game Script (MM2 vs GAG2 vs Speed Keyboard Escape)
   const requestedGame = (req.query.game || req.headers['x-game-name'] || (req.body && req.body.game) || '').toLowerCase();
   const placeIdStr = String(req.query.placeId || req.headers['x-game-id'] || (req.body && req.body.placeId) || '');
 
-  let selectedScript = SpeedKeyboardScript;
+  let selectedScript = GAG2Script;
 
   if (
-    requestedGame === 'gag2' || 
-    requestedGame === 'gardening' || 
-    requestedGame === 'grow_a_garden' ||
-    requestedGame === 'gag' ||
-    requestedGame.includes('garden') ||
-    placeIdStr === '18429188544' ||
-    placeIdStr === '12688469564' ||
-    placeIdStr === '13822092248' ||
-    placeIdStr === '14902166687'
+    requestedGame === 'mm2' ||
+    requestedGame === 'murdermystery' ||
+    requestedGame === 'murdermystery2' ||
+    requestedGame === 'murder_mystery_2' ||
+    requestedGame.includes('murder') ||
+    requestedGame.includes('mystery') ||
+    placeIdStr === '142823291' ||
+    placeIdStr === '3351327787' ||
+    placeIdStr === '66654135'
   ) {
-    selectedScript = GAG2Script;
-  } else {
+    selectedScript = MM2Script;
+  } else if (
+    requestedGame === 'speed_keyboard' ||
+    requestedGame === 'keyboard' ||
+    requestedGame.includes('speed') ||
+    requestedGame.includes('keyboard') ||
+    placeIdStr === '10842831818' ||
+    placeIdStr === '12519159074'
+  ) {
     selectedScript = SpeedKeyboardScript;
+  } else {
+    // Defaults to GAG2 (Grow a Garden 2)
+    selectedScript = GAG2Script;
   }
 
   // 5. Encrypt Payload so HttpSpy only sees scrambled ciphertext
