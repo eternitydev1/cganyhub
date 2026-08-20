@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { verifyToken } = require('./verify');
 const SpeedKeyboardScript = require('./games/speed_keyboard');
+const GAG2Script = require('./games/gag2');
 
 const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 
@@ -108,9 +109,31 @@ module.exports = async (req, res) => {
     usedNonces.set(nonce, now);
   }
 
-  // 4. Encrypt Payload so HttpSpy only sees scrambled ciphertext
+  // 4. Determine Target Game Script (GAG2 vs Speed Keyboard Escape)
+  const requestedGame = (req.query.game || req.headers['x-game-name'] || (req.body && req.body.game) || '').toLowerCase();
+  const placeIdStr = String(req.query.placeId || req.headers['x-game-id'] || (req.body && req.body.placeId) || '');
+
+  let selectedScript = SpeedKeyboardScript;
+
+  if (
+    requestedGame === 'gag2' || 
+    requestedGame === 'gardening' || 
+    requestedGame === 'grow_a_garden' ||
+    requestedGame === 'gag' ||
+    requestedGame.includes('garden') ||
+    placeIdStr === '18429188544' ||
+    placeIdStr === '12688469564' ||
+    placeIdStr === '13822092248' ||
+    placeIdStr === '14902166687'
+  ) {
+    selectedScript = GAG2Script;
+  } else {
+    selectedScript = SpeedKeyboardScript;
+  }
+
+  // 5. Encrypt Payload so HttpSpy only sees scrambled ciphertext
   const sessionKey = crypto.createHash('sha256').update(String(key) + String(hwid) + (nonce || 'def')).digest('hex');
-  const encryptedPayload = rc4Encrypt(sessionKey, SpeedKeyboardScript);
+  const encryptedPayload = rc4Encrypt(sessionKey, selectedScript);
 
   // Return decryptor bootstrap stub
   const decryptorBootstrap = `--[=[ CIGANYHUB PROTECTED IN-MEMORY RUNTIME ]=]
