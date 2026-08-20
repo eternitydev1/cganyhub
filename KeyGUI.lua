@@ -92,6 +92,8 @@ local function performHttpRequest(url, method, customHeaders, bodyData)
     headers["X-Timestamp"] = nowTime
     headers["X-Nonce"] = nonce
     headers["X-Client-Ver"] = "1.1"
+    headers["X-Game-Id"] = tostring(game.PlaceId)
+    headers["X-Game-Name"] = (getgenv and getgenv().CiganyHub_Game) or ""
 
     if raw_request then
         local ok, res = pcall(function()
@@ -707,18 +709,22 @@ local function DoVerify(rawKey, isAutoCheck)
         local url = VERCEL_DOMAIN .. "/api/get-script"
         local postBody = HttpService:JSONEncode({
             key = key,
-            hwid = MY_HWID
+            hwid = MY_HWID,
+            placeId = tostring(game.PlaceId),
+            game = (getgenv and getgenv().CiganyHub_Game) or ""
         })
         local headers = {
             ["Content-Type"] = "application/json",
             ["X-Hub-Key"] = key,
-            ["X-HWID"] = MY_HWID
+            ["X-HWID"] = MY_HWID,
+            ["X-Game-Id"] = tostring(game.PlaceId),
+            ["X-Game-Name"] = (getgenv and getgenv().CiganyHub_Game) or ""
         }
         local body, status = performHttpRequest(url, "POST", headers, postBody)
 
         -- Fallback to GET with query params if executor does not support POST requests
         if status ~= 200 or not body or string.find(body, "500") then
-            local fallbackUrl = VERCEL_DOMAIN .. "/api/get-script?key=" .. HttpService:UrlEncode(key) .. "&hwid=" .. HttpService:UrlEncode(MY_HWID)
+            local fallbackUrl = VERCEL_DOMAIN .. "/api/get-script?key=" .. HttpService:UrlEncode(key) .. "&hwid=" .. HttpService:UrlEncode(MY_HWID) .. "&placeId=" .. tostring(game.PlaceId) .. "&game=" .. HttpService:UrlEncode((getgenv and getgenv().CiganyHub_Game) or "")
             body, status = performHttpRequest(fallbackUrl, "GET", headers, nil)
         end
 
