@@ -1,10 +1,11 @@
 const crypto = require('crypto');
 const { verifyToken } = require('./verify');
-const SpeedKeyboardScript = require('./games/speed_keyboard');
-const GAG2Script = require('./games/gag2');
-const MM2Script = require('./games/mm2');
-const BloxFruitsScript = require('./games/bloxfruits');
-const BladeBallScript = require('./games/bladeball');
+const SpeedKeyboardScript = require('../games/speed_keyboard');
+const GAG2Script = require('../games/gag2');
+const MM2Script = require('../games/mm2');
+const BloxFruitsScript = require('../games/bloxfruits');
+const BladeBallScript = require('../games/bladeball');
+const { blacklistKey, isKeyBlacklisted, getNukeTimestamp } = require('../lib/storage');
 
 const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 
@@ -21,93 +22,86 @@ setInterval(() => {
   }
 }, 30000);
 
-// RC4 Stream Cipher for Payload Obfuscation over the wire
-function rc4Encrypt(keyStr, text) {
+// Stream RC4 Symmetric Cipher for dynamic payload stream encryption
+function rc4Encrypt(keyStr, str) {
   const s = [];
   for (let i = 0; i < 256; i++) s[i] = i;
   let j = 0;
   for (let i = 0; i < 256; i++) {
     j = (j + s[i] + keyStr.charCodeAt(i % keyStr.length)) % 256;
-    [s[i], s[j]] = [s[j], s[i]];
+    const temp = s[i];
+    s[i] = s[j];
+    s[j] = temp;
   }
   let i = 0;
   j = 0;
   const res = [];
-  for (let y = 0; y < text.length; y++) {
+  for (let y = 0; y < str.length; y++) {
     i = (i + 1) % 256;
     j = (j + s[i]) % 256;
-    [s[i], s[j]] = [s[j], s[i]];
+    const temp = s[i];
+    s[i] = s[j];
+    s[j] = temp;
     const k = s[(s[i] + s[j]) % 256];
-    res.push(String.fromCharCode(text.charCodeAt(y) ^ k));
+    res.push(str.charCodeAt(y) ^ k);
   }
-  return Buffer.from(res.join(''), 'binary').toString('base64');
+  return Buffer.from(res).toString('base64');
 }
 
 module.exports = async (req, res) => {
+  // CORS & Security Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, User-Agent, X-Hub-Key, X-HWID, X-Nonce, X-Timestamp, X-Auth-Sig');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, User-Agent, X-Hub-Key, X-HWID, X-Nonce, X-Timestamp, X-Client-Ver, X-Game-Id, X-Game-Name');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
+  // 1. Anti-Bot / Anti-Web-Scraper Protection
   const userAgent = (req.headers['user-agent'] || '').toLowerCase();
-  
-  // 1. Strict Anti-Browser & Anti-Bot Protection
-  const isBrowser = (
-    userAgent.includes('mozilla') ||
-    userAgent.includes('chrome') ||
-    userAgent.includes('safari') ||
-    userAgent.includes('firefox') ||
-    userAgent.includes('edge')
-  ) && !userAgent.includes('roblox');
+  const isRoblox = userAgent.includes('roblox') || userAgent.includes('synx') || userAgent.includes('executor') || userAgent.includes('fluxus') || userAgent.includes('delta') || userAgent.includes('solara') || userAgent.includes('wave') || userAgent.includes('xeno') || userAgent.includes('krnl') || userAgent.includes('electron') || userAgent.includes('hydrogen') || userAgent.includes('arceus');
+  const isBrowserOrBot = userAgent.includes('mozilla') || userAgent.includes('chrome') || userAgent.includes('curl') || userAgent.includes('wget') || userAgent.includes('python') || userAgent.includes('discordbot') || userAgent.includes('telegrambot') || userAgent.includes('http-spy');
 
-  if (isBrowser) {
-    return res.status(403).send('-- [403 Forbidden] Direct browser inspection is strictly prohibited.');
+  if (!isRoblox && isBrowserOrBot) {
+    return res.status(403).send('-- [CiganyHub Security] Execution blocked. Direct browser access prohibited.');
   }
 
-  // Parse parameters
-  let key = req.headers['x-hub-key'];
-  let hwid = req.headers['x-hwid'];
-  let nonce = req.headers['x-nonce'];
-  let timestamp = parseInt(req.headers['x-timestamp'] || '0', 10);
-  let authSig = req.headers['x-auth-sig'];
+  // 2. Validate Key and Hardware ID
+  const key = req.headers['x-hub-key'] || req.query.key || (req.body && req.body.key);
+  const hwid = req.headers['x-hwid'] || req.query.hwid || (req.body && req.body.hwid);
 
-  if (req.body && typeof req.body === 'object') {
-    key = key || req.body.key;
-    hwid = hwid || req.body.hwid;
-    nonce = nonce || req.body.nonce;
-    timestamp = timestamp || req.body.timestamp;
-    authSig = authSig || req.body.authSig;
-  }
-
-  key = key || req.query.key;
-  hwid = hwid || req.query.hwid;
-  nonce = nonce || req.query.nonce;
-  timestamp = timestamp || parseInt(req.query.timestamp || '0', 10);
-  authSig = authSig || req.query.authSig;
-
-  // 2. Validate Key & Check Revocation Blacklist
   if (!key) {
-    return res.status(401).send('-- [401 Unauthorized] Missing key parameter.');
+    return res.status(401).send('-- [CiganyHub] Error: Missing key token. Please get a key at https://cganyhub.vercel.app');
   }
 
-  const verifyResult = await verifyToken(key, hwid);
-  if (!verifyResult.valid) {
-    return res.status(403).send(`-- [403 Forbidden] ${verifyResult.message || 'Invalid key.'}`);
-  }
+  const verification = await verifyToken(key, hwid);
 
-  // 3. Anti-Replay Nonce Check (Prevents HttpSpy link copying / reuse)
-  if (nonce) {
-    const now = Date.now();
-    // Nonce must be recent (< 30 seconds old)
-    if (timestamp && Math.abs(now - timestamp) > 30000) {
-      return res.status(403).send('-- [403 Forbidden] Handshake expired. Please request a fresh session.');
+  if (!verification.valid) {
+    if (verification.reason === 'EXPIRED') {
+      return res.status(403).send('-- [CiganyHub] Error: Key has expired! Please visit https://cganyhub.vercel.app to get a new 8-hour key.');
     }
+    if (verification.reason === 'HWID_MISMATCH') {
+      return res.status(403).send('-- [CiganyHub] Error: Key is locked to a different Hardware ID (HWID). Share-lock protection active.');
+    }
+    if (verification.reason === 'REVOKED' || verification.reason === 'NUKED') {
+      return res.status(403).send('-- [CiganyHub] Error: Key has been revoked or banned by administration.');
+    }
+    return res.status(403).send(`-- [CiganyHub] Error: ${verification.message || 'Invalid or malformed key token.'}`);
+  }
 
+  // 3. Prevent Replay Attacks via Nonce Check
+  const nonce = req.headers['x-nonce'];
+  const timestamp = parseInt(req.headers['x-timestamp'], 10);
+  const now = Date.now();
+
+  if (nonce && timestamp) {
+    if (Math.abs(now - timestamp) > 90000) {
+      return res.status(403).send('-- [CiganyHub Security] Request timestamp out of sync (expired replay window).');
+    }
     if (usedNonces.has(nonce)) {
-      return res.status(403).send('-- [403 Forbidden] Nonce already consumed. Replay detected.');
+      return res.status(403).send('-- [CiganyHub Security] Replay attack detected. Nonce already consumed.');
     }
     usedNonces.set(nonce, now);
   }
@@ -163,65 +157,82 @@ module.exports = async (req, res) => {
   ) {
     selectedScript = SpeedKeyboardScript;
   } else {
-    // Defaults to GAG2 (Grow a Garden 2)
     selectedScript = GAG2Script;
   }
 
-  // 5. Encrypt Payload so HttpSpy only sees scrambled ciphertext
-  const sessionKey = crypto.createHash('sha256').update(String(key) + String(hwid) + (nonce || 'def')).digest('hex');
+  // 5. Dynamic Symmetric Session Encryption (Protects Lua code in transit against HttpSpy & sniffers)
+  const sessionSalt = crypto.randomBytes(8).toString('hex');
+  const sessionKey = crypto.createHash('sha256').update(SECRET + sessionSalt + (hwid || '')).digest('hex');
   const encryptedPayload = rc4Encrypt(sessionKey, selectedScript);
 
-  // Return decryptor bootstrap stub
-  const decryptorBootstrap = `--[=[ CIGANYHUB PROTECTED IN-MEMORY RUNTIME ]=]
-local _K = "${sessionKey}"
-local _P = "${encryptedPayload}"
+  // In-memory runtime decryptor stub executed by the Roblox client
+  const decryptorBootstrap = `
+-- [CIGANYHUB PROTECTED IN-MEMORY RUNTIME]
+local _k = "${sessionKey}"
+local _s = "${sessionSalt}"
+local _raw = "${encryptedPayload}"
 
-local function _D(k, enc)
-    local b64 = enc
-    local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-    local function b64d(data)
-        data = string.gsub(data, '[^'..b..'=]', '')
-        return (data:gsub('..', function(cc)
-            local function d(c) return (b:find(c, 1, true) or 1) - 1 end
-            local b1, b2 = d(cc:sub(1,1)), d(cc:sub(2,2))
-            return string.char(bit32.bor(bit32.lshift(b1, 2), bit32.rshift(b2, 4)))
-        end))
+local function _rc4(keyStr, dataStr)
+    local bit = bit or bit32
+    local b64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    local b64lookup = {}
+    for i = 1, #b64chars do
+        b64lookup[b64chars:sub(i, i)] = i - 1
     end
-    
-    local raw = (syn and syn.crypt and syn.crypt.base64 and syn.crypt.base64.decode and syn.crypt.base64.decode(b64))
-        or (crypt and crypt.base64 and crypt.base64.decode and crypt.base64.decode(b64))
-        or (crypt and crypt.base64decode and crypt.base64decode(b64))
-        or (base64_decode and base64_decode(b64))
-        or b64d(b64)
-        
+
+    local function b64decode(input)
+        input = string.gsub(input, '[^' .. b64chars .. '=]', '')
+        local output = {}
+        local length = #input
+        for i = 1, length, 4 do
+            local a = b64lookup[input:sub(i, i)] or 0
+            local b = b64lookup[input:sub(i+1, i+1)] or 0
+            local c = b64lookup[input:sub(i+2, i+2)] or 0
+            local d = b64lookup[input:sub(i+3, i+3)] or 0
+            local b1 = bit.bor(bit.lshift(a, 2), bit.rshift(b, 4))
+            table.insert(output, string.char(b1))
+            if input:sub(i+2, i+2) ~= '=' then
+                local b2 = bit.bor(bit.lshift(bit.band(b, 15), 4), bit.rshift(c, 2))
+                table.insert(output, string.char(b2))
+            end
+            if input:sub(i+3, i+3) ~= '=' then
+                local b3 = bit.bor(bit.lshift(bit.band(c, 3), 6), d)
+                table.insert(output, string.char(b3))
+            end
+        end
+        return table.concat(output)
+    end
+
+    local cipher = b64decode(dataStr)
     local s = {}
     for i = 0, 255 do s[i] = i end
     local j = 0
     for i = 0, 255 do
-        j = (j + s[i] + string.byte(k, (i % #k) + 1)) % 256
+        j = (j + s[i] + string.byte(keyStr, (i % #keyStr) + 1)) % 256
         s[i], s[j] = s[j], s[i]
     end
-    local i, j = 0, 0
-    local out = {}
-    for y = 1, #raw do
+    local i, j2 = 0, 0
+    local res = {}
+    for y = 1, #cipher do
         i = (i + 1) % 256
-        j = (j + s[i]) % 256
-        s[i], s[j] = s[j], s[i]
-        local keyByte = s[(s[i] + s[j]) % 256]
-        out[y] = string.char(bit32.bxor(string.byte(raw, y), keyByte))
+        j2 = (j2 + s[i]) % 256
+        s[i], s[j2] = s[j2], s[i]
+        local k = s[(s[i] + s[j2]) % 256]
+        local byte = bit.bxor(string.byte(cipher, y), k)
+        table.insert(res, string.char(byte))
     end
-    return table.concat(out)
+    return table.concat(res)
 end
 
-local _DEC = _D(_K, _P)
-local _FN, _ERR = loadstring(_DEC)
-if _FN then
-    _FN()
+local decryptedCode = _rc4(_k, _raw)
+local scriptFunc, compileErr = loadstring(decryptedCode)
+if scriptFunc then
+    scriptFunc()
 else
-    warn("[CiganyHub Runtime Error] " .. tostring(_ERR))
+    warn("[CiganyHub Protected Bootstrap Error] " .. tostring(compileErr))
 end
 `;
 
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  return res.status(200).send(decryptorBootstrap);
+  return res.status(200).send(decryptorBootstrap.trim());
 };
