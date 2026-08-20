@@ -253,6 +253,95 @@
             box-shadow: 0 0 10px rgba(255, 30, 39, 0.2);
         }
 
+        .filter-controls-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 14px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.45);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .filter-tab {
+            padding: 6px 12px;
+            border-radius: 6px;
+            background: transparent;
+            border: none;
+            color: var(--text-sub);
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-tab:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .filter-tab.active {
+            background: rgba(255, 30, 39, 0.2);
+            color: var(--accent-red);
+            border: 1px solid rgba(255, 30, 39, 0.4);
+        }
+
+        .hide-toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            cursor: pointer;
+            user-select: none;
+            background: rgba(255, 30, 39, 0.1);
+            padding: 7px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 30, 39, 0.3);
+            transition: all 0.2s;
+        }
+
+        .hide-toggle-label:hover {
+            background: rgba(255, 30, 39, 0.18);
+            border-color: var(--accent-red);
+        }
+
+        .hide-toggle-label input[type="checkbox"] {
+            accent-color: var(--accent-red);
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .filter-search-input {
+            flex: 1;
+            min-width: 200px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: white;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.78rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .filter-search-input:focus {
+            border-color: var(--accent-red);
+            box-shadow: 0 0 10px rgba(255, 30, 39, 0.2);
+        }
+
         .table-wrap {
             width: 100%;
             overflow-x: auto;
@@ -473,6 +562,23 @@
                 </div>
             </div>
 
+            <!-- Filter Controls Row -->
+            <div class="filter-controls-row">
+                <label class="hide-toggle-label" title="Hide all expired and revoked keys from the table">
+                    <input type="checkbox" id="hideInactiveCheckbox" onchange="onHideInactiveToggle(this.checked)" />
+                    <i class="fa-solid fa-eye-slash"></i> Hide Expired & Revoked Keys
+                </label>
+
+                <div class="filter-tabs">
+                    <button class="filter-tab active" id="tabFilterAll" onclick="setFilterStatus('all')">All</button>
+                    <button class="filter-tab" id="tabFilterActive" onclick="setFilterStatus('active')">Active Only</button>
+                    <button class="filter-tab" id="tabFilterExpired" onclick="setFilterStatus('expired')">Expired</button>
+                    <button class="filter-tab" id="tabFilterRevoked" onclick="setFilterStatus('revoked')">Revoked</button>
+                </div>
+
+                <input type="text" id="filterSearchInput" class="filter-search-input" placeholder="🔍 Search key, note, HWID..." oninput="onSearchFilterChange()" />
+            </div>
+
             <div class="table-wrap">
                 <table>
                     <thead>
@@ -502,16 +608,48 @@
 
     <script>
         let isLifetimeMode = false;
+        let currentFilterStatus = 'all'; // 'all', 'active', 'expired', 'revoked'
+        let hideInactive = localStorage.getItem('ciganyhub_hide_inactive') === 'true';
+        let searchQuery = '';
+        let globalCachedKeys = [];
+
         const LOCAL_STORAGE_KEYS = 'ciganyhub_admin_keys_registry';
         const LOCAL_STORAGE_PASS = 'ciganyhub_admin_password';
 
         window.addEventListener('DOMContentLoaded', () => {
+            const savedHide = localStorage.getItem('ciganyhub_hide_inactive');
+            if (savedHide !== null) {
+                hideInactive = savedHide === 'true';
+            }
+            const hideCb = document.getElementById('hideInactiveCheckbox');
+            if (hideCb) hideCb.checked = hideInactive;
+
             const savedPass = localStorage.getItem(LOCAL_STORAGE_PASS);
             if (savedPass) {
                 document.getElementById('adminPassword').value = savedPass;
                 loadDashboard();
             }
         });
+
+        function onHideInactiveToggle(checked) {
+            hideInactive = checked;
+            localStorage.setItem('ciganyhub_hide_inactive', checked ? 'true' : 'false');
+            renderTable(globalCachedKeys);
+        }
+
+        function setFilterStatus(status) {
+            currentFilterStatus = status;
+            document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+            const tabId = 'tabFilter' + status.charAt(0).toUpperCase() + status.slice(1);
+            const tabEl = document.getElementById(tabId);
+            if (tabEl) tabEl.classList.add('active');
+            renderTable(globalCachedKeys);
+        }
+
+        function onSearchFilterChange() {
+            searchQuery = (document.getElementById('filterSearchInput').value || '').trim().toLowerCase();
+            renderTable(globalCachedKeys);
+        }
 
         function onPasswordChange() {
             const pass = document.getElementById('adminPassword').value.trim();
@@ -704,26 +842,68 @@
         }
 
         function renderTable(keys) {
+            globalCachedKeys = keys || [];
             const tbody = document.getElementById('keysTableBody');
             let activeCount = 0;
             let expiredCount = 0;
             let revokedCount = 0;
 
-            if (keys.length === 0) {
+            for (const item of globalCachedKeys) {
+                if (item.status === 'active') activeCount++;
+                if (item.status === 'expired') expiredCount++;
+                if (item.status === 'revoked') revokedCount++;
+            }
+
+            document.getElementById('statTotal').innerText = globalCachedKeys.length;
+            document.getElementById('statActive').innerText = activeCount;
+            document.getElementById('statExpired').innerText = expiredCount;
+            document.getElementById('statRevoked').innerText = revokedCount;
+
+            const tabAll = document.getElementById('tabFilterAll');
+            const tabAct = document.getElementById('tabFilterActive');
+            const tabExp = document.getElementById('tabFilterExpired');
+            const tabRev = document.getElementById('tabFilterRevoked');
+            if (tabAll) tabAll.innerText = `All (${globalCachedKeys.length})`;
+            if (tabAct) tabAct.innerText = `Active (${activeCount})`;
+            if (tabExp) tabExp.innerText = `Expired (${expiredCount})`;
+            if (tabRev) tabRev.innerText = `Revoked (${revokedCount})`;
+
+            if (globalCachedKeys.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No keys generated yet. Use the generator above to mint your first key!</td></tr>';
-                document.getElementById('statTotal').innerText = '0';
-                document.getElementById('statActive').innerText = '0';
-                document.getElementById('statExpired').innerText = '0';
-                document.getElementById('statRevoked').innerText = '0';
+                return;
+            }
+
+            // Filter keys based on hideInactive toggle, status tab, and search query
+            const filtered = globalCachedKeys.filter(item => {
+                if (hideInactive && item.status !== 'active') {
+                    return false;
+                }
+                if (currentFilterStatus !== 'all' && item.status !== currentFilterStatus) {
+                    return false;
+                }
+                if (searchQuery) {
+                    const matchKey = (item.key || '').toLowerCase().includes(searchQuery);
+                    const matchNote = (item.note || '').toLowerCase().includes(searchQuery);
+                    const matchHwid = (item.hwid || '').toLowerCase().includes(searchQuery);
+                    const matchSource = (item.source || '').toLowerCase().includes(searchQuery);
+                    if (!matchKey && !matchNote && !matchHwid && !matchSource) return false;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                if (hideInactive && (expiredCount > 0 || revokedCount > 0)) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Hiding ${expiredCount + revokedCount} expired and revoked keys (Toggle is ON). ${activeCount === 0 ? 'No active keys right now.' : 'No active keys match your search.'}</td></tr>`;
+                } else if (searchQuery) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No keys match "${searchQuery}".</td></tr>`;
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No keys in this view.</td></tr>`;
+                }
                 return;
             }
 
             let html = '';
-            for (const item of keys) {
-                if (item.status === 'active') activeCount++;
-                if (item.status === 'expired') expiredCount++;
-                if (item.status === 'revoked') revokedCount++;
-
+            for (const item of filtered) {
                 const statusClass = item.status;
                 const statusLabel = item.status.toUpperCase();
                 const sourceBadge = item.source ? `<span class="source-tag">${item.source}</span>` : '';
@@ -748,10 +928,6 @@
             }
 
             tbody.innerHTML = html;
-            document.getElementById('statTotal').innerText = keys.length;
-            document.getElementById('statActive').innerText = activeCount;
-            document.getElementById('statExpired').innerText = expiredCount;
-            document.getElementById('statRevoked').innerText = revokedCount;
         }
 
         function copyKeyText(str) {
