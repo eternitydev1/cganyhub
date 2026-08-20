@@ -92,7 +92,23 @@ local function getDetectedGame()
 
     local placeId = tostring(game.PlaceId)
     local gameId = tostring(game.GameId)
+    local RS = game:GetService("ReplicatedStorage")
     
+    -- 1. In-Game Environment & Map Signatures (Zero-fail check)
+    if workspace:FindFirstChild("Balls") or workspace:FindFirstChild("Alive") or RS:FindFirstChild("ParrySuccess") or (RS:FindFirstChild("Remotes") and RS.Remotes:FindFirstChild("ParryAttempt")) or gameId == "4777817887" then
+        return "bladeball"
+    end
+    if (RS:FindFirstChild("Remotes") and (RS.Remotes:FindFirstChild("CommF_") or RS.Remotes:FindFirstChild("CommE"))) or gameId == "994732206" then
+        return "bloxfruits"
+    end
+    if RS:FindFirstChild("GetPlayerData") or (RS:FindFirstChild("Remotes") and RS.Remotes:FindFirstChild("Gameplay")) or gameId == "3351327787" then
+        return "mm2"
+    end
+    if workspace:FindFirstChild("Keyboards") or workspace:FindFirstChild("Typing") then
+        return "speed_keyboard"
+    end
+
+    -- 2. Marketplace Title Fallback
     local title = ""
     pcall(function()
         local info = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
@@ -101,11 +117,11 @@ local function getDetectedGame()
         end
     end)
 
-    if string.find(title, "blade") or string.find(title, "ball") or placeId == "13772394625" or placeId == "14732610803" or placeId == "15144787463" or placeId == "15264892126" or gameId == "4777817887" then
+    if string.find(title, "blade") or string.find(title, "ball") or placeId == "13772394625" or placeId == "14732610803" or placeId == "15144787463" or placeId == "15264892126" then
         return "bladeball"
-    elseif string.find(title, "blox") or string.find(title, "fruit") or placeId == "2753915549" or placeId == "4442272183" or placeId == "7449423635" or gameId == "994732206" then
+    elseif string.find(title, "blox") or string.find(title, "fruit") or placeId == "2753915549" or placeId == "4442272183" or placeId == "7449423635" then
         return "bloxfruits"
-    elseif string.find(title, "garden") or string.find(title, "gag") or string.find(title, "grow") or placeId == "18429188544" or placeId == "12688469564" or placeId == "13822092248" or placeId == "14902166687" or gameId == "6159672728" then
+    elseif string.find(title, "garden") or string.find(title, "gag") or string.find(title, "grow") or placeId == "18429188544" or placeId == "12688469564" or placeId == "13822092248" or placeId == "14902166687" then
         return "gag2"
     elseif string.find(title, "murder") or string.find(title, "mm2") or string.find(title, "mystery") or placeId == "142823291" or placeId == "3351327787" or placeId == "66654135" then
         return "mm2"
@@ -113,7 +129,7 @@ local function getDetectedGame()
         return "speed_keyboard"
     end
 
-    return title ~= "" and title or "gag2"
+    return title ~= "" and title or "bladeball"
 end
 
 local function performHttpRequest(url, method, customHeaders, bodyData)
@@ -712,9 +728,14 @@ local function executePayload(scriptCode)
     CloseUI()
     local func, err = loadstring(scriptCode)
     if func then
-        func()
+        local success, runErr = pcall(func)
+        if success then
+            print("[CiganyHub] Script successfully executed!")
+        else
+            warn("[CiganyHub Runtime Error] " .. tostring(runErr))
+        end
     else
-        warn("[CiganyHub Execution Error] " .. tostring(err))
+        warn("[CiganyHub Syntax Error] " .. tostring(err))
     end
 end
 
