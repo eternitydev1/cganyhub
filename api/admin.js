@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { blacklistKey, unblacklistKey, isKeyBlacklisted, setNukeTimestamp, getNukeTimestamp, saveKey, getAllKeys, hashToken } = require('./storage');
+const { blacklistKey, unblacklistKey, isKeyBlacklisted, setNukeTimestamp, getNukeTimestamp, saveKey, getAllKeys, deleteKey, clearInactiveKeys, hashToken } = require('./storage');
 
 const SECRET = process.env.KEY_SECRET || 'HajraToroczkai719Laszlo99IstenVAGY';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Fasszoporomangutanok265hitlerfasza99';
@@ -272,6 +272,42 @@ module.exports = async (req, res) => {
         success: true,
         action: 'unrevoke',
         message: 'Key un-revoked successfully.'
+      });
+    }
+
+    // ══════════════════════════════════════════════════════
+    // ACTION: DELETE SINGLE KEY FROM DATABASE / DASHBOARD
+    // ══════════════════════════════════════════════════════
+    if (action === 'delete-key' || action === 'remove-key') {
+      const targetKey = (req.query && req.query.key) || (req.body && req.body.key);
+      if (!targetKey) {
+        return res.status(400).json({ success: false, message: 'Missing target key to delete.' });
+      }
+
+      await deleteKey(targetKey);
+      await blacklistKey(targetKey, 'Deleted and purged by owner');
+
+      return res.status(200).json({
+        success: true,
+        action: 'delete-key',
+        message: 'Key permanently removed and deleted from database.',
+        key: targetKey
+      });
+    }
+
+    // ══════════════════════════════════════════════════════
+    // ACTION: PERMANENTLY REMOVE / PURGE ALL EXPIRED & REVOKED KEYS
+    // ══════════════════════════════════════════════════════
+    if (action === 'clear-inactive' || action === 'delete-expired' || action === 'purge-inactive') {
+      const now = Date.now();
+      const nukeTime = await getNukeTimestamp();
+      const count = await clearInactiveKeys(now, nukeTime);
+
+      return res.status(200).json({
+        success: true,
+        action: 'clear-inactive',
+        deletedCount: count,
+        message: `Successfully purged and removed ${count} expired & revoked keys from the database!`
       });
     }
 
