@@ -738,23 +738,137 @@ GKBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ════════════════════════════════════════════════════════
--- RUN SCRIPT EXECUTION
+-- LOADING SPLASH OVERLAY (Anti-Freeze Visual Feedback)
+-- ════════════════════════════════════════════════════════
+local function showLoadingSplash(gameName)
+    local splashGui = Instance.new("ScreenGui")
+    splashGui.Name = "CiganyHubLoadingSplash"
+    splashGui.ResetOnSpawn = false
+    splashGui.IgnoreGuiInset = true
+    splashGui.DisplayOrder = 999999
+    
+    if syn and syn.protect_gui then
+        syn.protect_gui(splashGui)
+        splashGui.Parent = CoreGui
+    elseif gethui then
+        splashGui.Parent = gethui()
+    else
+        splashGui.Parent = CoreGui
+    end
+
+    local backdrop = Instance.new("Frame", splashGui)
+    backdrop.Size = UDim2.new(1, 0, 1, 0)
+    backdrop.BackgroundColor3 = Color3.fromRGB(4, 4, 8)
+    backdrop.BackgroundTransparency = 0.35
+    backdrop.BorderSizePixel = 0
+
+    local splashBlur = Instance.new("BlurEffect", Lighting)
+    splashBlur.Size = 24
+
+    local modal = Instance.new("Frame", backdrop)
+    modal.Size = UDim2.new(0, 360, 0, 140)
+    modal.AnchorPoint = Vector2.new(0.5, 0.5)
+    modal.Position = UDim2.new(0.5, 0, 0.5, 0)
+    modal.BackgroundColor3 = Color3.fromRGB(12, 14, 20)
+    modal.BorderSizePixel = 0
+    Instance.new("UICorner", modal).CornerRadius = UDim.new(0, 12)
+
+    local stroke = Instance.new("UIStroke", modal)
+    stroke.Color = Color3.fromRGB(255, 30, 39)
+    stroke.Thickness = 1.5
+
+    local titleLbl = Instance.new("TextLabel", modal)
+    titleLbl.Size = UDim2.new(1, 0, 0, 32)
+    titleLbl.Position = UDim2.new(0, 0, 0, 14)
+    titleLbl.BackgroundTransparency = 1
+    titleLbl.Text = "⚡ CIGANYHUB LOADING"
+    titleLbl.TextColor3 = Color3.fromRGB(255, 30, 39)
+    titleLbl.Font = Enum.Font.GothamBold
+    titleLbl.TextSize = 16
+
+    local statusLbl = Instance.new("TextLabel", modal)
+    statusLbl.Size = UDim2.new(1, -40, 0, 26)
+    statusLbl.Position = UDim2.new(0, 20, 0, 48)
+    statusLbl.BackgroundTransparency = 1
+    statusLbl.Text = "Loading & Initializing " .. tostring(gameName or "Script"):upper() .. "..."
+    statusLbl.TextColor3 = Color3.fromRGB(200, 205, 220)
+    statusLbl.Font = Enum.Font.GothamMedium
+    statusLbl.TextSize = 13
+
+    local barBg = Instance.new("Frame", modal)
+    barBg.Size = UDim2.new(1, -40, 0, 6)
+    barBg.Position = UDim2.new(0, 20, 0, 84)
+    barBg.BackgroundColor3 = Color3.fromRGB(25, 28, 38)
+    barBg.BorderSizePixel = 0
+    Instance.new("UICorner", barBg).CornerRadius = UDim.new(0, 3)
+
+    local barFill = Instance.new("Frame", barBg)
+    barFill.Size = UDim2.new(0.05, 0, 1, 0)
+    barFill.BackgroundColor3 = Color3.fromRGB(255, 30, 39)
+    barFill.BorderSizePixel = 0
+    Instance.new("UICorner", barFill).CornerRadius = UDim.new(0, 3)
+
+    TweenService:Create(barFill, TweenInfo.new(1.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0.9, 0, 1, 0)}):Play()
+
+    local hintLbl = Instance.new("TextLabel", modal)
+    hintLbl.Size = UDim2.new(1, 0, 0, 20)
+    hintLbl.Position = UDim2.new(0, 0, 0, 102)
+    hintLbl.BackgroundTransparency = 1
+    hintLbl.Text = "Please wait, decrypting & compiling payload..."
+    hintLbl.TextColor3 = Color3.fromRGB(110, 115, 135)
+    hintLbl.Font = Enum.Font.Gotham
+    hintLbl.TextSize = 11
+
+    return function()
+        pcall(function()
+            TweenService:Create(barFill, TweenInfo.new(0.2), {Size = UDim2.new(1, 0, 1, 0)}):Play()
+            statusLbl.Text = "✅ Script Running!"
+            statusLbl.TextColor3 = Color3.fromRGB(65, 195, 115)
+            task.wait(0.35)
+            TweenService:Create(backdrop, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
+            TweenService:Create(modal, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
+            TweenService:Create(stroke, TweenInfo.new(0.4), {Transparency = 1}):Play()
+            TweenService:Create(titleLbl, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+            TweenService:Create(statusLbl, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+            TweenService:Create(barBg, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+            TweenService:Create(barFill, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+            TweenService:Create(hintLbl, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+            task.wait(0.4)
+            if splashBlur then splashBlur:Destroy() end
+            if splashGui then splashGui:Destroy() end
+        end)
+    end
+end
+
+-- ════════════════════════════════════════════════════════
+-- RUN SCRIPT EXECUTION (Safe Asynchronous Execution)
 -- ════════════════════════════════════════════════════════
 local function executePayload(scriptCode)
     local targetGame = getDetectedGame()
     print("[CiganyHub] Launching " .. tostring(targetGame) .. " payload (" .. tostring(#scriptCode) .. " bytes)...")
     CloseUI()
-    local func, err = loadstring(scriptCode)
-    if func then
-        local success, runErr = pcall(func)
-        if success then
-            print("[CiganyHub] " .. tostring(targetGame) .. " successfully loaded and running!")
+
+    local hideSplash = showLoadingSplash(targetGame)
+    
+    task.spawn(function()
+        task.wait(0.2) -- Give time for the UI to render the loading splash
+        local func, err = loadstring(scriptCode)
+        if func then
+            task.wait(0.05)
+            local success, runErr = pcall(function()
+                task.spawn(func)
+            end)
+            if success then
+                print("[CiganyHub] " .. tostring(targetGame) .. " successfully loaded and running!")
+            else
+                warn("[CiganyHub Runtime Error] " .. tostring(runErr))
+            end
         else
-            warn("[CiganyHub Runtime Error] " .. tostring(runErr))
+            warn("[CiganyHub Syntax Error] " .. tostring(err))
         end
-    else
-        warn("[CiganyHub Syntax Error] " .. tostring(err))
-    end
+        task.wait(0.3)
+        hideSplash()
+    end)
 end
 
 -- ════════════════════════════════════════════════════════
