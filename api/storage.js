@@ -153,6 +153,48 @@ async function getAllKeys() {
   return Array.from(localKeys.values());
 }
 
+async function deleteKey(keyStr) {
+  if (!keyStr) return;
+  localKeys.delete(keyStr);
+  const hash = hashToken(keyStr).substring(0, 16);
+  await redisExec(['DEL', `hubkey_${hash}`]);
+}
+
+async function clearInactiveKeys(now = Date.now(), nukeTime = 0) {
+  let deletedCount = 0;
+  const keys = await redisExec(['KEYS', 'hubkey_*']);
+  if (Array.isArray(keys) && keys.length > 0) {
+    for (const k of keys) {
+      const val = await redisExec(['GET', k]);
+      if (val) {
+        try {
+          const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+          const isRevoked = await isKeyBlacklisted(parsed.key);
+          const nuked = nukeTime > 0 && parsed.createdAt && parsed.createdAt <= nukeTime;
+          const expired = !parsed.isLifetime && now > parsed.expiresAt;
+          if (isRevoked || nuked || expired || parsed.revoked) {
+            await redisExec(['DEL', k]);
+            localKeys.delete(parsed.key);
+            deletedCount++;
+          }
+        } catch (e) {}
+      }
+    }
+  }
+
+  for (const [k, parsed] of localKeys.entries()) {
+    const isRevoked = await isKeyBlacklisted(parsed.key);
+    const nuked = nukeTime > 0 && parsed.createdAt && parsed.createdAt <= nukeTime;
+    const expired = !parsed.isLifetime && now > parsed.expiresAt;
+    if (isRevoked || nuked || expired || parsed.revoked) {
+      localKeys.delete(k);
+      deletedCount++;
+    }
+  }
+
+  return deletedCount;
+}
+
 module.exports = {
   blacklistKey,
   unblacklistKey,
@@ -161,5 +203,7 @@ module.exports = {
   getNukeTimestamp,
   saveKey,
   getAllKeys,
+  deleteKey,
+  clearInactiveKeys,
   hashToken
 };
