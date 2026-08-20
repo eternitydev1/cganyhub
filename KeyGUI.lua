@@ -358,11 +358,27 @@ BrandLbl.Position = UDim2.new(0, 14, 0, 2)
 BrandLbl.RichText = true
 BrandLbl.ZIndex = 6
 
--- Badge
-local BadgeF = MkFrame(TopBar, UDim2.new(0,84,0,isMobile and 18 or 16),
-    UDim2.new(0, isMobile and 130 or 120, 0.5, isMobile and -9 or -8), C.bg3, 4, 6)
+-- Badge (Shows Detected Game)
+local detectedGameName = getDetectedGame()
+local gameBadgeTitle = "Blade Ball"
+if detectedGameName == "bloxfruits" then
+    gameBadgeTitle = "Blox Fruits"
+elseif detectedGameName == "mm2" then
+    gameBadgeTitle = "MM2"
+elseif detectedGameName == "gag2" then
+    gameBadgeTitle = "GAG2"
+elseif detectedGameName == "speed_keyboard" then
+    gameBadgeTitle = "Speed Keyboard"
+elseif detectedGameName == "bladeball" then
+    gameBadgeTitle = "Blade Ball"
+else
+    gameBadgeTitle = string.upper(detectedGameName)
+end
+
+local BadgeF = MkFrame(TopBar, UDim2.new(0,isMobile and 95 or 105,0,isMobile and 18 or 16),
+    UDim2.new(0, isMobile and 125 or 120, 0.5, isMobile and -9 or -8), C.bg3, 4, 6)
 MkStroke(BadgeF, C.brd2, 1)
-local bLbl = MkLbl(BadgeF, "Key System", 8, C.txt2, Enum.Font.GothamMedium, Enum.TextXAlignment.Center)
+local bLbl = MkLbl(BadgeF, "🎮 " .. gameBadgeTitle, 8, C.grn, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
 bLbl.ZIndex = 7
 
 -- Close button
@@ -725,12 +741,14 @@ end)
 -- RUN SCRIPT EXECUTION
 -- ════════════════════════════════════════════════════════
 local function executePayload(scriptCode)
+    local targetGame = getDetectedGame()
+    print("[CiganyHub] Launching " .. tostring(targetGame) .. " payload (" .. tostring(#scriptCode) .. " bytes)...")
     CloseUI()
     local func, err = loadstring(scriptCode)
     if func then
         local success, runErr = pcall(func)
         if success then
-            print("[CiganyHub] Script successfully executed!")
+            print("[CiganyHub] " .. tostring(targetGame) .. " successfully loaded and running!")
         else
             warn("[CiganyHub Runtime Error] " .. tostring(runErr))
         end
