@@ -148,16 +148,15 @@
             justify-content: space-between;
             margin-bottom: 16px;
             padding-bottom: 12px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .card-title {
-            font-family: 'Orbitron', sans-serif;
             font-size: 0.85rem;
             font-weight: 700;
-            letter-spacing: 0.06em;
             text-transform: uppercase;
-            color: var(--text-main);
+            letter-spacing: 0.05em;
+            color: var(--text-sub);
             display: flex;
             align-items: center;
             gap: 8px;
@@ -168,179 +167,139 @@
         }
 
         .card-tag {
-            font-family: 'Fira Code', monospace;
-            font-size: 0.78rem;
+            font-size: 0.7rem;
             font-weight: 600;
-            color: var(--accent-red);
             background: rgba(255, 30, 39, 0.1);
-            border: 1px solid rgba(255, 30, 39, 0.3);
+            color: var(--accent-red);
             padding: 3px 8px;
             border-radius: 6px;
+            border: 1px solid rgba(255, 30, 39, 0.2);
+            text-transform: uppercase;
         }
 
         .card-tag.done {
-            color: var(--success-green);
             background: rgba(34, 197, 94, 0.1);
+            color: var(--success-green);
             border-color: rgba(34, 197, 94, 0.3);
         }
 
         .btn {
             width: 100%;
-            height: 48px;
+            height: 52px;
             border-radius: 10px;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 0.82rem;
-            font-weight: 700;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            cursor: pointer;
             border: none;
-            display: inline-flex;
+            outline: none;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 700;
+            display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
             text-decoration: none;
-            transition: all 0.25s ease;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
 
         .btn-red {
-            background: linear-gradient(135deg, #ff1e27 0%, #ba0c14 100%);
+            background: linear-gradient(135deg, #ff1e27 0%, #b30f16 100%);
             color: #ffffff;
             box-shadow: 0 4px 20px rgba(255, 30, 39, 0.35);
-            border: 1px solid rgba(255, 30, 39, 0.6);
         }
 
         .btn-red:hover {
-            background: linear-gradient(135deg, #ff3b43 0%, #d6131c 100%);
+            background: linear-gradient(135deg, #ff3b43 0%, #cc141c 100%);
+            box-shadow: 0 6px 25px rgba(255, 30, 39, 0.5);
             transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(255, 30, 39, 0.55);
         }
 
         .btn-secondary {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--card-border);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             color: var(--text-main);
         }
 
         .btn-secondary:hover {
-            background: rgba(255, 30, 39, 0.1);
-            border-color: var(--accent-red);
-            box-shadow: 0 0 15px rgba(255, 30, 39, 0.2);
-        }
-
-        .btn-discord {
-            background: rgba(88, 101, 242, 0.15);
-            border: 1px solid rgba(88, 101, 242, 0.4);
-            color: #ffffff;
-        }
-
-        .btn-discord:hover {
-            background: #5865F2;
-            border-color: #5865F2;
-            box-shadow: 0 0 20px rgba(88, 101, 242, 0.4);
-            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.09);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
         }
 
         .btn-gold-premium {
-            background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
-            color: #000000;
-            font-weight: 800;
-            border: 1px solid #fde047;
-            box-shadow: 0 4px 20px rgba(234, 179, 8, 0.35);
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #ffffff;
+            border: 1px solid #fbbf24;
+            box-shadow: 0 4px 20px rgba(245, 158, 11, 0.35);
         }
 
         .btn-gold-premium:hover {
-            background: linear-gradient(135deg, #facc15 0%, #eab308 100%);
-            box-shadow: 0 6px 25px rgba(234, 179, 8, 0.6);
+            background: linear-gradient(135deg, #fbbf24 0%, #b45309 100%);
+            box-shadow: 0 6px 25px rgba(245, 158, 11, 0.55);
             transform: translateY(-2px);
-            color: #000000;
         }
 
         .vip-perks-list {
             display: flex;
             flex-direction: column;
             gap: 8px;
-            margin-top: 6px;
-            margin-bottom: 8px;
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: var(--text-sub);
         }
 
         .vip-perk-item {
             display: flex;
             align-items: center;
-            gap: 12px;
-            background: rgba(0, 0, 0, 0.45);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            padding: 9px 14px;
-            border-radius: 8px;
-            font-size: 0.78rem;
-            color: #e4e4e7;
-            letter-spacing: 0.02em;
+            gap: 10px;
         }
 
         .vip-perk-item i {
-            font-size: 0.95rem;
-            width: 18px;
-            text-align: center;
+            font-size: 0.9rem;
         }
 
         .key-panel {
             display: none;
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px dashed rgba(255, 30, 39, 0.3);
-            animation: fadeIn 0.35s ease;
+            margin-top: 14px;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
+        .key-content-box {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px dashed var(--accent-red);
+            border-radius: 10px;
+            padding: 14px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: #7dd3fc;
+            word-break: break-all;
+            margin-bottom: 12px;
+            line-height: 1.5;
+            user-select: all;
         }
 
         .timer-box {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(34, 197, 94, 0.3);
+            background: rgba(255, 30, 39, 0.08);
+            border: 1px solid rgba(255, 30, 39, 0.2);
+            padding: 10px 14px;
             border-radius: 8px;
-            padding: 12px 16px;
             margin-bottom: 12px;
         }
 
         .timer-label {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
+            font-weight: 700;
             color: var(--text-sub);
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .timer-label i {
-            color: var(--success-green);
+            letter-spacing: 0.04em;
         }
 
         .timer-val {
             font-family: 'Fira Code', monospace;
             font-size: 0.95rem;
-            font-weight: 600;
-            color: var(--success-green);
-            letter-spacing: 0.06em;
-            text-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
-        }
-
-        .key-content-box {
-            font-family: 'Fira Code', monospace;
-            font-size: 0.78rem;
-            color: #7dd3fc;
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(125, 211, 252, 0.25);
-            padding: 12px 14px;
-            border-radius: 8px;
-            word-break: break-all;
-            margin-bottom: 12px;
-            user-select: all;
-            line-height: 1.45;
+            font-weight: 700;
+            color: var(--accent-red);
         }
 
         .input-group {
@@ -500,12 +459,11 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
-            const claimed = params.get('claimed');
-            const key = params.get('key');
+            const key = params.get('key') || params.get('claimed_key');
             const exp = params.get('exp');
             const step = params.get('step');
 
-            if (claimed === 'true' && key) {
+            if (key) {
                 activeKey = key;
                 document.getElementById('keyText').innerText = key;
                 document.getElementById('keyPanel').style.display = 'block';
