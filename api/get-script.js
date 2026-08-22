@@ -22,86 +22,70 @@ setInterval(() => {
   }
 }, 30000);
 
-// Stream RC4 Symmetric Cipher for dynamic payload stream encryption
-function rc4Encrypt(keyStr, str) {
-  const s = [];
-  for (let i = 0; i < 256; i++) s[i] = i;
-  let j = 0;
-  for (let i = 0; i < 256; i++) {
-    j = (j + s[i] + keyStr.charCodeAt(i % keyStr.length)) % 256;
-    const temp = s[i];
-    s[i] = s[j];
-    s[j] = temp;
-  }
-  let i = 0;
-  j = 0;
-  const res = [];
-  for (let y = 0; y < str.length; y++) {
-    i = (i + 1) % 256;
-    j = (j + s[i]) % 256;
-    const temp = s[i];
-    s[i] = s[j];
-    s[j] = temp;
-    const k = s[(s[i] + s[j]) % 256];
-    res.push(str.charCodeAt(y) ^ k);
-  }
-  return Buffer.from(res).toString('base64');
-}
-
 module.exports = async (req, res) => {
-  // CORS & Security Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, User-Agent, X-Hub-Key, X-HWID, X-Nonce, X-Timestamp, X-Client-Ver, X-Game-Id, X-Game-Name');
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, User-Agent, X-Hub-Key, X-HWID, X-Nonce, X-Timestamp, X-Auth-Sig, X-Game-Id, X-Game-Name');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // 1. Anti-Bot / Anti-Web-Scraper Protection
   const userAgent = (req.headers['user-agent'] || '').toLowerCase();
-  const isRoblox = userAgent.includes('roblox') || userAgent.includes('synx') || userAgent.includes('executor') || userAgent.includes('fluxus') || userAgent.includes('delta') || userAgent.includes('solara') || userAgent.includes('wave') || userAgent.includes('xeno') || userAgent.includes('krnl') || userAgent.includes('electron') || userAgent.includes('hydrogen') || userAgent.includes('arceus');
-  const isBrowserOrBot = userAgent.includes('mozilla') || userAgent.includes('chrome') || userAgent.includes('curl') || userAgent.includes('wget') || userAgent.includes('python') || userAgent.includes('discordbot') || userAgent.includes('telegrambot') || userAgent.includes('http-spy');
+  
+  // 1. Strict Anti-Browser & Anti-Bot Protection
+  const isBrowser = (
+    userAgent.includes('mozilla') ||
+    userAgent.includes('chrome') ||
+    userAgent.includes('safari') ||
+    userAgent.includes('firefox') ||
+    userAgent.includes('edge')
+  ) && !userAgent.includes('roblox');
 
-  if (!isRoblox && isBrowserOrBot) {
-    return res.status(403).send('-- [CiganyHub Security] Execution blocked. Direct browser access prohibited.');
+  if (isBrowser) {
+    return res.status(403).send('-- [403 Forbidden] Direct browser inspection is strictly prohibited.');
   }
 
-  // 2. Validate Key and Hardware ID
-  const key = req.headers['x-hub-key'] || req.query.key || (req.body && req.body.key);
-  const hwid = req.headers['x-hwid'] || req.query.hwid || (req.body && req.body.hwid);
+  // Parse parameters
+  let key = req.headers['x-hub-key'];
+  let hwid = req.headers['x-hwid'];
+  let nonce = req.headers['x-nonce'];
+  let timestamp = parseInt(req.headers['x-timestamp'] || '0', 10);
+  let authSig = req.headers['x-auth-sig'];
 
+  if (req.body && typeof req.body === 'object') {
+    key = key || req.body.key;
+    hwid = hwid || req.body.hwid;
+    nonce = nonce || req.body.nonce;
+    timestamp = timestamp || req.body.timestamp;
+    authSig = authSig || req.body.authSig;
+  }
+
+  key = key || req.query.key;
+  hwid = hwid || req.query.hwid;
+  nonce = nonce || req.query.nonce;
+  timestamp = timestamp || parseInt(req.query.timestamp || '0', 10);
+  authSig = authSig || req.query.authSig;
+
+  // 2. Validate Key & Check Revocation Blacklist
   if (!key) {
-    return res.status(401).send('-- [CiganyHub] Error: Missing key token. Please get a key at https://cganyhub.vercel.app');
+    return res.status(401).send('-- [401 Unauthorized] Missing key parameter.');
   }
 
-  const verification = await verifyToken(key, hwid);
-
-  if (!verification.valid) {
-    if (verification.reason === 'EXPIRED') {
-      return res.status(403).send('-- [CiganyHub] Error: Key has expired! Please visit https://cganyhub.vercel.app to get a new 8-hour key.');
-    }
-    if (verification.reason === 'HWID_MISMATCH') {
-      return res.status(403).send('-- [CiganyHub] Error: Key is locked to a different Hardware ID (HWID). Share-lock protection active.');
-    }
-    if (verification.reason === 'REVOKED' || verification.reason === 'NUKED') {
-      return res.status(403).send('-- [CiganyHub] Error: Key has been revoked or banned by administration.');
-    }
-    return res.status(403).send(`-- [CiganyHub] Error: ${verification.message || 'Invalid or malformed key token.'}`);
+  const verifyResult = await verifyToken(key, hwid);
+  if (!verifyResult.valid) {
+    return res.status(403).send(`-- [403 Forbidden] ${verifyResult.message || 'Invalid key.'}`);
   }
 
-  // 3. Prevent Replay Attacks via Nonce Check
-  const nonce = req.headers['x-nonce'];
-  const timestamp = parseInt(req.headers['x-timestamp'], 10);
-  const now = Date.now();
-
-  if (nonce && timestamp) {
-    if (Math.abs(now - timestamp) > 90000) {
-      return res.status(403).send('-- [CiganyHub Security] Request timestamp out of sync (expired replay window).');
+  // 3. Anti-Replay Nonce Check (Prevents HttpSpy link copying / reuse)
+  if (nonce) {
+    const now = Date.now();
+    if (timestamp && Math.abs(now - timestamp) > 30000) {
+      return res.status(403).send('-- [403 Forbidden] Handshake expired. Please request a fresh session.');
     }
+
     if (usedNonces.has(nonce)) {
-      return res.status(403).send('-- [CiganyHub Security] Replay attack detected. Nonce already consumed.');
+      return res.status(403).send('-- [403 Forbidden] Nonce already consumed. Replay detected.');
     }
     usedNonces.set(nonce, now);
   }
@@ -160,79 +144,6 @@ module.exports = async (req, res) => {
     selectedScript = GAG2Script;
   }
 
-  // 5. Dynamic Symmetric Session Encryption (Protects Lua code in transit against HttpSpy & sniffers)
-  const sessionSalt = crypto.randomBytes(8).toString('hex');
-  const sessionKey = crypto.createHash('sha256').update(SECRET + sessionSalt + (hwid || '')).digest('hex');
-  const encryptedPayload = rc4Encrypt(sessionKey, selectedScript);
-
-  // In-memory runtime decryptor stub executed by the Roblox client
-  const decryptorBootstrap = `
--- [CIGANYHUB PROTECTED IN-MEMORY RUNTIME]
-local _k = "${sessionKey}"
-local _s = "${sessionSalt}"
-local _raw = "${encryptedPayload}"
-
-local function _rc4(keyStr, dataStr)
-    local bit = bit or bit32
-    local b64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-    local b64lookup = {}
-    for i = 1, #b64chars do
-        b64lookup[b64chars:sub(i, i)] = i - 1
-    end
-
-    local function b64decode(input)
-        input = string.gsub(input, '[^' .. b64chars .. '=]', '')
-        local output = {}
-        local length = #input
-        for i = 1, length, 4 do
-            local a = b64lookup[input:sub(i, i)] or 0
-            local b = b64lookup[input:sub(i+1, i+1)] or 0
-            local c = b64lookup[input:sub(i+2, i+2)] or 0
-            local d = b64lookup[input:sub(i+3, i+3)] or 0
-            local b1 = bit.bor(bit.lshift(a, 2), bit.rshift(b, 4))
-            table.insert(output, string.char(b1))
-            if input:sub(i+2, i+2) ~= '=' then
-                local b2 = bit.bor(bit.lshift(bit.band(b, 15), 4), bit.rshift(c, 2))
-                table.insert(output, string.char(b2))
-            end
-            if input:sub(i+3, i+3) ~= '=' then
-                local b3 = bit.bor(bit.lshift(bit.band(c, 3), 6), d)
-                table.insert(output, string.char(b3))
-            end
-        end
-        return table.concat(output)
-    end
-
-    local cipher = b64decode(dataStr)
-    local s = {}
-    for i = 0, 255 do s[i] = i end
-    local j = 0
-    for i = 0, 255 do
-        j = (j + s[i] + string.byte(keyStr, (i % #keyStr) + 1)) % 256
-        s[i], s[j] = s[j], s[i]
-    end
-    local i, j2 = 0, 0
-    local res = {}
-    for y = 1, #cipher do
-        i = (i + 1) % 256
-        j2 = (j2 + s[i]) % 256
-        s[i], s[j2] = s[j2], s[i]
-        local k = s[(s[i] + s[j2]) % 256]
-        local byte = bit.bxor(string.byte(cipher, y), k)
-        table.insert(res, string.char(byte))
-    end
-    return table.concat(res)
-end
-
-local decryptedCode = _rc4(_k, _raw)
-local scriptFunc, compileErr = loadstring(decryptedCode)
-if scriptFunc then
-    scriptFunc()
-else
-    warn("[CiganyHub Protected Bootstrap Error] " .. tostring(compileErr))
-end
-`;
-
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  return res.status(200).send(decryptorBootstrap.trim());
+  return res.status(200).send(selectedScript);
 };
