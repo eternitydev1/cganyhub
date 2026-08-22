@@ -24,102 +24,120 @@ function notifyDiscord(keyData) {
   if (!DISCORD_WEBHOOK_URL || !DISCORD_WEBHOOK_URL.startsWith('http')) return Promise.resolve();
   return new Promise((resolve) => {
     try {
-      const url = new URL(DISCORD_WEBHOOK_URL);
-      const postData = JSON.stringify({
+      const payload = JSON.stringify({
         embeds: [{
-          title: "🔑 New 8-Hour Key Claimed!",
-          description: "A user has successfully completed LootLabs and claimed a key.",
+          title: "🔑 New LootLabs Key Generated",
           color: 0xff1e27,
           fields: [
-            { name: "Key Token", value: "```" + keyData.key + "```", inline: false },
-            { name: "Valid For", value: "8 Hours", inline: true },
-            { name: "Expires At", value: new Date(keyData.expiresAt).toLocaleString(), inline: true },
-            { name: "HWID Lock", value: keyData.hwid ? "`Bound`" : "`Auto-binds on first run`", inline: true }
+            { name: "Key Token", value: `\`\`\`${keyData.key}\`\`\``, inline: false },
+            { name: "Duration", value: "8 Hours", inline: true },
+            { name: "Created At", value: `<t:${Math.floor(keyData.createdAt / 1000)}:R>`, inline: true },
+            { name: "Source", value: "LootLabs Checkpoint (2/2)", inline: true }
           ],
-          footer: { text: "CiganyHub Key Gateway • Stateless HMAC-SHA256" },
+          footer: { text: "CiganyHub Live Tracking" },
           timestamp: new Date().toISOString()
         }]
       });
 
+      const urlObj = new URL(DISCORD_WEBHOOK_URL);
       const req = https.request({
-        hostname: url.hostname,
-        port: url.port || 443,
-        path: url.pathname + url.search,
+        hostname: urlObj.hostname,
+        path: urlObj.pathname + urlObj.search,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(postData)
+          'Content-Length': Buffer.byteLength(payload)
         }
       }, () => resolve());
 
       req.on('error', () => resolve());
-      req.setTimeout(2500, () => {
+      req.setTimeout(3500, () => {
         req.destroy();
         resolve();
       });
 
-      req.write(postData);
+      req.write(payload);
       req.end();
-    } catch(e) {
+    } catch (e) {
       resolve();
     }
   });
 }
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  const userHwid = req.query.hwid || (req.body && req.body.hwid) || null;
-  const now = Date.now();
-  const expiresAt = now + (EXPIRATION_HOURS * 60 * 60 * 1000);
-
-  const payload = {
-    v: 1,
-    iat: now,
-    exp: expiresAt,
-    nonce: crypto.randomBytes(8).toString('hex')
-  };
-
-  if (userHwid) {
-    payload.hwid = crypto.createHash('sha256').update(String(userHwid).trim()).digest('hex').substring(0, 16);
-  }
-
-  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const hmac = crypto.createHmac('sha256', SECRET);
-  hmac.update(payloadB64);
-  const signature = hmac.digest('base64url');
-
-  const fullKey = `KEY_${payloadB64}.${signature}`;
-
-  // Automatically record this key in database for dashboard tracking
   try {
-    await saveKey({
-      key: fullKey,
-      note: 'LootLabs User Generated',
-      source: 'LootLabs',
+    const session = req.query.session || '';
+    const step = parseInt(req.query.step || '1', 10);
+    
+    if (!session) {
+      return safeRedirect(res, '/?error=missing_session');
+    }
+
+    const parts = session.split('.');
+    if (parts.length !== 2) {
+      return safeRedirect(res, '/?error=invalid_session');
+    }
+
+    const [payloadB64, providedSig] = parts;
+    const hmac = crypto.createHmac('sha256', SECRET);
+    hmac.update(payloadB64);
+    const expectedSig = hmac.digest('base64url');
+
+    const providedBuf = Buffer.from(providedSig);
+    const expectedBuf = Buffer.from(expectedSig);
+
+    if (providedBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(providedBuf, expectedBuf)) {
+      return safeRedirect(res, '/?error=tampered_session');
+    }
+
+    // Step 1 completed -> Redirect to Step 2 (Checkpoint 1 of 2 done -> shows 1/2)
+    if (step === 1) {
+      return safeRedirect(res, '/?step=2');
+    }
+
+    // Step 2 completed -> Issue the 8-Hour Key
+    const now = Date.now();
+    const expiresAt = now + EXPIRATION_HOURS * 60 * 60 * 1000;
+
+    const keyPayload = {
+      v: 1,
+      iat: now,
+      exp: expiresAt,
+      note: 'LootLabs Checkpoint Key',
+      durationLabel: '8 Hours',
+      nonce: crypto.randomBytes(6).toString('hex')
+    };
+
+    const keyPayloadB64 = Buffer.from(JSON.stringify(keyPayload)).toString('base64url');
+    const keyHmac = crypto.createHmac('sha256', SECRET);
+    keyHmac.update(keyPayloadB64);
+    const keySig = keyHmac.digest('base64url');
+
+    const key = `KEY_${keyPayloadB64}.${keySig}`;
+
+    const keyRecord = {
+      key: key,
+      note: 'LootLabs Checkpoint Key',
+      source: 'LootLabs Gateway',
       isLifetime: false,
       durationLabel: '8 Hours',
       createdAt: now,
       formattedCreated: new Date(now).toLocaleString(),
       expiresAt: expiresAt,
       formattedExpires: new Date(expiresAt).toLocaleString(),
-      boundHwid: userHwid ? 'Bound to HWID' : 'Unbound (Auto-locks on first device)',
-      revoked: false,
-      expired: false,
-      status: 'active'
-    });
-  } catch(e) {}
+      boundHwid: 'Unbound (Auto-locks on first device)',
+      revoked: false
+    };
 
-  await notifyDiscord({
-    key: fullKey,
-    expiresAt: expiresAt,
-    hwid: userHwid
-  });
+    // 1. Send Discord notification
+    await notifyDiscord(keyRecord);
 
-  const redirectUrl = `/?claimed_key=${encodeURIComponent(fullKey)}&expires_in=8h`;
-  return safeRedirect(res, redirectUrl);
+    // 2. Save key in database
+    await saveKey(keyRecord);
+
+    return safeRedirect(res, `/?claimed=true&key=${encodeURIComponent(key)}&exp=${expiresAt}`);
+  } catch (globalErr) {
+    console.error('[Claim Error]', globalErr);
+    return safeRedirect(res, `/?error=${encodeURIComponent(globalErr.message)}`);
+  }
 };
